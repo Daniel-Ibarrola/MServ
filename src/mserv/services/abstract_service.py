@@ -55,6 +55,7 @@ class AbstractService(abc.ABC):
         raise NotImplementedError
 
     def start_main_thread(self):
+        """ Starts this service in the main thread. """
         self._handle_message()
 
     def start(self) -> None:
