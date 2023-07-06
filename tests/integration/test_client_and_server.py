@@ -34,13 +34,15 @@ class TestClientReceiverAndServerSender:
         with server:
             server.start()
             with client:
-                client.connect()
+                client.connect(timeout=1)
                 client.start()
+                client.join()
+            server.join()
 
         assert server.to_send.empty()
         assert not client.received.empty()
-        assert client.received.get() == b"Hello\r\n"
-        assert client.received.get() == b"World\r\n"
+        assert client.received.get() == b"Hello"
+        assert client.received.get() == b"World"
 
 
 class TestClientSenderAndServerReceiver:
@@ -68,13 +70,13 @@ class TestClientSenderAndServerReceiver:
         with server:
             server.start()
             with client:
-                client.connect()
+                client.connect(timeout=2)
                 client.start()
 
         assert client.to_send.empty()
         assert not server.received.empty()
-        assert server.received.get() == b"Hello\r"
-        assert server.received.get() == b"World\n"
+        assert server.received.get() == b"Hello"
+        assert server.received.get() == b"World"
 
 
 class TestClientAndServer:
@@ -111,15 +113,15 @@ class TestClientAndServer:
         with server:
             server.start()
             with client:
-                client.connect()
+                client.connect(timeout=2)
                 client.start()
 
         assert server.to_send.empty()
         assert client.to_send.empty()
 
         assert not server.received.empty()
-        assert server.received.get() == b"Hello from client\r\n"
-        assert server.received.get() == b"World from client\r\n"
+        assert server.received.get() == b"Hello from client"
+        assert server.received.get() == b"World from client"
 
         assert not client.received.empty()
         assert client.received.get() == b"Hello from server"
