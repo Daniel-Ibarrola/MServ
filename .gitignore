@@ -1,6 +1,7 @@
 src/mserv.egg-info
 .idea/
 venv/
+temp/
 
 __pycache__
 *.pyc

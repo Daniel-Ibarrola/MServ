@@ -13,7 +13,8 @@ def send_msg(
         msg_queue: queue.Queue,
         stop: Callable[[], bool],
         msg_end: bytes = b"\r\n",
-        logger: Optional[logging.Logger] = None
+        logger: Optional[logging.Logger] = None,
+        name: str = "",
 ) -> None:
     # setup()
     while not stop():
@@ -24,7 +25,7 @@ def send_msg(
             # handle_msg_sent()
         except ConnectionError:
             if logger is not None:
-                logger.info(f"Failed to send message. Connection lost")
+                logger.info(f"{name} failed to send message. Connection lost")
             break
 
     # teardown()

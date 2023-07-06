@@ -16,7 +16,8 @@ def receive_msg(
         msg_queue: queue.Queue,
         stop: Callable[[], bool],
         msg_end: bytes,
-        logger: Optional[logging.Logger] = None
+        logger: Optional[logging.Logger] = None,
+        name: str = ""
 ) -> None:
     # setup()
     while not stop():
@@ -24,6 +25,8 @@ def receive_msg(
         if data is not None:
             # handle_message_received(data)
             msg_queue.put(data)
+        elif logger:
+            logger.info(f"{name} failed to receive message")
 
     # teardown()
     if logger is not None:

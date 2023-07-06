@@ -117,6 +117,8 @@ class TestClientAndServer:
             with client:
                 client.connect(timeout=2)
                 client.start()
+                client.join()
+            server.join()
 
         assert server.to_send.empty()
         assert client.to_send.empty()

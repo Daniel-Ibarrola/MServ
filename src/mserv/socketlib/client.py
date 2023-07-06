@@ -178,12 +178,76 @@ class Client(ClientBase):
     def __init__(
             self,
             address: tuple[str, int],
-            received: Optional[queue.Queue[str]] = None,
+            received: Optional[queue.Queue[bytes]] = None,
             to_send: Optional[queue.Queue[str]] = None,
             reconnect: bool = True,
             stop_receive: Optional[Callable[[], bool]] = lambda: False,
-            stop_reconnect: Optional[Callable[[], bool]] = lambda: False,
+            stop_send: Optional[Callable[[], bool]] = lambda: False,
             logger: Optional[logging.Logger] = None,
     ):
         super().__init__(address, reconnect, logger=logger)
-        
+        self.msg_end = b"\r\n"
+        self._buffer = None  # type: Optional[Buffer]
+
+        self._received = received if received is not None else queue.Queue()
+        self._to_send = to_send if to_send is not None else queue.Queue()
+        self._stop_receive = stop_receive
+        self._stop_send = stop_send
+
+        self._send_thread = threading.Thread(target=self._send, daemon=True)
+        self._recv_thread = threading.Thread(target=self._recv, daemon=True)
+
+    @property
+    def to_send(self) -> queue.Queue[str]:
+        return self._to_send
+
+    @property
+    def received(self) -> queue.Queue[bytes]:
+        return self._received
+
+    @property
+    def send_thread(self) -> threading.Thread:
+        return self._send_thread
+
+    @property
+    def receive_thread(self) -> threading.Thread:
+        return self._recv_thread
+
+    def connect(self, timeout: Optional[float] = None) -> None:
+        # TODO: connect can run in another thread
+        super().connect(timeout)
+        self._buffer = Buffer(self._socket)
+
+    def _send(self) -> None:
+        send_msg(
+            self._socket,
+            self._to_send,
+            self._stop_send,
+            self.msg_end,
+            self._logger,
+            self.__class__.__name__
+        )
+
+    def _recv(self):
+        receive_msg(
+            self._buffer,
+            self._received,
+            self._stop_receive,
+            self.msg_end,
+            self._logger,
+            self.__class__.__name__
+        )
+
+    def start(self) -> None:
+        """ Start this client in a new thread. """
+        self._recv_thread.start()
+        self._send_thread.start()
+
+    def join(self) -> None:
+        self._recv_thread.join()
+        self._send_thread.join()
+
+    def shutdown(self) -> None:
+        self._stop_send = lambda: True
+        self._stop_receive = lambda: True
+        self.join()
