@@ -7,20 +7,30 @@ import time
 from typing import Callable, Optional
 
 from mserv.socketlib.buffer import Buffer
+from mserv.socketlib.send import send_msg
+from mserv.socketlib.receive import receive_msg
 
 
 class ClientBase:
+    """ Parent class for other client classes that implements some common methods.
+
+        This class should not be instantiated.
+    """
 
     def __init__(
             self,
             address: tuple[str, int],
             reconnect: bool = True,
+            stop: Optional[Callable[[], bool]] = lambda: False,
             logger: Optional[logging.Logger] = None,
     ):
         self._address = address
         self._socket = None
         self._reconnect = reconnect
+        self._stop = stop
         self._logger = logger
+
+        self._run_thread = threading.Thread()
 
     @property
     def ip(self) -> str:
@@ -29,6 +39,10 @@ class ClientBase:
     @property
     def port(self) -> int:
         return self._address[1]
+
+    @property
+    def run_thread(self) -> threading.Thread:
+        return self._run_thread
 
     def connect(self, timeout: Optional[float] = None) -> None:
         """ Connect to the server. """
@@ -65,6 +79,17 @@ class ClientBase:
         self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_RCVTIMEO, timeval)
         self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_SNDTIMEO, timeval)
 
+    def start(self) -> None:
+        """ Start this client in a new thread. """
+        self._run_thread.start()
+
+    def join(self) -> None:
+        self._run_thread.join()
+
+    def shutdown(self) -> None:
+        self._stop = lambda: True
+        self.join()
+
     def __enter__(self):
         return self
 
@@ -84,25 +109,15 @@ class ClientReceiver(ClientBase):
             stop: Optional[Callable[[], bool]] = lambda: False,
             logger: Optional[logging.Logger] = None,
     ):
-        super().__init__(address, reconnect, logger)
+        super().__init__(address, reconnect, stop, logger)
         self.msg_end = b"\r\n"
         self._buffer = None  # type: Buffer
         self._received = received if received is not None else queue.Queue()
-        self._stop = stop
-
         self._run_thread = threading.Thread(target=self._recv, daemon=True)
 
     @property
     def received(self) -> queue.Queue[bytes]:
         return self._received
-
-    @property
-    def run_thread(self) -> threading.Thread:
-        return self._run_thread
-
-    def start(self) -> None:
-        """ Start this client in a new thread. """
-        self._run_thread.start()
 
     def start_main_thread(self) -> None:
         """ Start this client in the main thread"""
@@ -113,13 +128,13 @@ class ClientReceiver(ClientBase):
         self._buffer = Buffer(self._socket)
 
     def _recv(self):
-        while not self._stop():
-            data = self._get_msg()
-            if data is not None:
-                self._received.put(data)
-
-        if self._logger is not None:
-            self._logger.debug("Receive thread stopped")
+        receive_msg(
+            self._buffer,
+            self._received,
+            self._stop,
+            self.msg_end,
+            self._logger
+        )
 
     def _get_msg(self) -> Optional[bytes]:
         try:
@@ -127,17 +142,33 @@ class ClientReceiver(ClientBase):
         except ConnectionError:
             return
 
-    def join(self) -> None:
-        self._run_thread.join()
-
-    def shutdown(self) -> None:
-        self._stop = lambda: True
-        self.join()
-
 
 class ClientSender(ClientBase):
     """ A client that sends messages to a server"""
-    pass
+
+    def __init__(
+            self,
+            address: tuple[str, int],
+            to_send: Optional[queue.Queue[str]] = None,
+            reconnect: bool = True,
+            stop: Optional[Callable[[], bool]] = lambda: False,
+            logger: Optional[logging.Logger] = None,
+    ):
+        super().__init__(address, reconnect, stop, logger)
+        self.msg_end = b"\r\n"
+        self._to_send = to_send if to_send is not None else queue.Queue()
+        self._run_thread = threading.Thread(target=self._send, daemon=True)
+
+    @property
+    def to_send(self) -> queue.Queue[str]:
+        return self._to_send
+
+    def _send(self) -> None:
+        pass
+
+    def start_main_thread(self) -> None:
+        """ Start this client in the main thread"""
+        self._send()
 
 
 class Client(ClientBase):
