@@ -46,6 +46,7 @@ class ClientBase:
 
     def connect(self, timeout: Optional[float] = None) -> None:
         """ Connect to the server. """
+        # TODO: reconnect
         start = time.time()
         if timeout is None:
             timeout = float("inf")
@@ -136,12 +137,6 @@ class ClientReceiver(ClientBase):
             self._logger
         )
 
-    def _get_msg(self) -> Optional[bytes]:
-        try:
-            return self._buffer.get_msg(msg_end=self.msg_end)
-        except ConnectionError:
-            return
-
 
 class ClientSender(ClientBase):
     """ A client that sends messages to a server"""
@@ -164,7 +159,13 @@ class ClientSender(ClientBase):
         return self._to_send
 
     def _send(self) -> None:
-        pass
+        send_msg(
+            self._socket,
+            self._to_send,
+            self._stop,
+            self.msg_end,
+            self._logger
+        )
 
     def start_main_thread(self) -> None:
         """ Start this client in the main thread"""
@@ -174,4 +175,15 @@ class ClientSender(ClientBase):
 class Client(ClientBase):
     """ A client that sends and receives messages to and from a server.
     """
-    pass
+    def __init__(
+            self,
+            address: tuple[str, int],
+            received: Optional[queue.Queue[str]] = None,
+            to_send: Optional[queue.Queue[str]] = None,
+            reconnect: bool = True,
+            stop_receive: Optional[Callable[[], bool]] = lambda: False,
+            stop_reconnect: Optional[Callable[[], bool]] = lambda: False,
+            logger: Optional[logging.Logger] = None,
+    ):
+        super().__init__(address, reconnect, logger=logger)
+        

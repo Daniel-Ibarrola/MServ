@@ -72,6 +72,8 @@ class TestClientSenderAndServerReceiver:
             with client:
                 client.connect(timeout=2)
                 client.start()
+                client.join()
+            server.join()
 
         assert client.to_send.empty()
         assert not server.received.empty()

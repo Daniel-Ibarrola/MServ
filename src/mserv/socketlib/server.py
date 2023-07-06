@@ -4,8 +4,9 @@ import socket
 import threading
 from typing import Callable, Optional
 
-from mserv.socketlib.send import send_msg
+from mserv.socketlib.buffer import Buffer
 from mserv.socketlib.receive import receive_msg
+from mserv.socketlib.send import send_msg
 
 
 class ServerBase:
@@ -86,7 +87,34 @@ class ServerReceiver(ServerBase):
             logger: Optional[logging.Logger] = None,
     ):
         super().__init__(address, reconnect, stop, logger)
-        pass
+        self.msg_end = b"\r\n"
+        self._buffer = None  # type: Buffer
+        self._received = received if received is not None else queue.Queue()
+        self._run_thread = threading.Thread(
+            target=self._recv, daemon=True
+        )
+
+    @property
+    def received(self) -> queue.Queue[bytes]:
+        return self._received
+
+    def accept_connection(self) -> None:
+        super().accept_connection()
+        self._buffer = Buffer(self._connection)
+
+    def _recv(self):
+        self.accept_connection()
+        receive_msg(
+            self._buffer,
+            self._received,
+            self._stop,
+            self.msg_end,
+            self._logger,
+        )
+
+    def start_main_thread(self) -> None:
+        self.listen()
+        self._recv()
 
 
 class ServerSender(ServerBase):
@@ -101,7 +129,8 @@ class ServerSender(ServerBase):
             logger: Optional[logging.Logger] = None,
     ):
         super().__init__(address, reconnect, stop, logger)
-        self._to_send = to_send
+        self.msg_end = b"\r\n"
+        self._to_send = to_send if to_send is not None else queue.Queue()
         self._run_thread = threading.Thread(
             target=self._send, daemon=True
         )
@@ -120,13 +149,9 @@ class ServerSender(ServerBase):
             self._connection,
             self._to_send,
             self._stop,
-            b"\r\n",
+            self.msg_end,
             self._logger
         )
-
-    @staticmethod
-    def encode_msg(msg: str, msg_end: bytes = b"\r\n"):
-        return msg.encode() + msg_end
 
 
 class Server:
