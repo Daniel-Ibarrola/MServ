@@ -129,13 +129,25 @@ class ClientReceiver(ClientBase):
         self._buffer = Buffer(self._socket)
 
     def _recv(self):
-        receive_msg(
-            self._buffer,
-            self._received,
-            self._stop,
-            self.msg_end,
-            self._logger
-        )
+        if self._reconnect:
+            while True:
+                # receive_msg exits if there is a connection error
+                receive_msg(
+                    self._buffer,
+                    self._received,
+                    self._stop,
+                    self.msg_end,
+                    self._logger
+                )
+                self.connect()
+        else:
+            receive_msg(
+                self._buffer,
+                self._received,
+                self._stop,
+                self.msg_end,
+                self._logger
+            )
 
 
 class ClientSender(ClientBase):
@@ -159,13 +171,23 @@ class ClientSender(ClientBase):
         return self._to_send
 
     def _send(self) -> None:
-        send_msg(
-            self._socket,
-            self._to_send,
-            self._stop,
-            self.msg_end,
-            self._logger
-        )
+        if self._reconnect:
+            while True:
+                send_msg(
+                    self._socket,
+                    self._to_send,
+                    self._stop,
+                    self.msg_end,
+                    self._logger
+                )
+        else:
+            send_msg(
+                self._socket,
+                self._to_send,
+                self._stop,
+                self.msg_end,
+                self._logger
+            )
 
     def start_main_thread(self) -> None:
         """ Start this client in the main thread"""
@@ -196,6 +218,7 @@ class Client(ClientBase):
 
         self._send_thread = threading.Thread(target=self._send, daemon=True)
         self._recv_thread = threading.Thread(target=self._recv, daemon=True)
+        self._connected = threading.Event()
 
     @property
     def to_send(self) -> queue.Queue[str]:
@@ -217,26 +240,52 @@ class Client(ClientBase):
         # TODO: connect can run in another thread
         super().connect(timeout)
         self._buffer = Buffer(self._socket)
+        self._connected.set()
 
     def _send(self) -> None:
-        send_msg(
-            self._socket,
-            self._to_send,
-            self._stop_send,
-            self.msg_end,
-            self._logger,
-            self.__class__.__name__
-        )
+        if self._reconnect:
+            while True:
+                send_msg(
+                    self._socket,
+                    self._to_send,
+                    self._stop_send,
+                    self.msg_end,
+                    self._logger,
+                    self.__class__.__name__
+                )
+                self._connected.clear()
+                self.connect()
+        else:
+            send_msg(
+                self._socket,
+                self._to_send,
+                self._stop_send,
+                self.msg_end,
+                self._logger,
+                self.__class__.__name__
+            )
 
     def _recv(self):
-        receive_msg(
-            self._buffer,
-            self._received,
-            self._stop_receive,
-            self.msg_end,
-            self._logger,
-            self.__class__.__name__
-        )
+        if self._reconnect:
+            while True:
+                receive_msg(
+                    self._buffer,
+                    self._received,
+                    self._stop_receive,
+                    self.msg_end,
+                    self._logger,
+                    self.__class__.__name__
+                )
+                self._connected.wait()
+        else:
+            receive_msg(
+                self._buffer,
+                self._received,
+                self._stop_receive,
+                self.msg_end,
+                self._logger,
+                self.__class__.__name__
+            )
 
     def start(self) -> None:
         """ Start this client in a new thread. """

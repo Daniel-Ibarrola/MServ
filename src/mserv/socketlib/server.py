@@ -103,14 +103,26 @@ class ServerReceiver(ServerBase):
         self._buffer = Buffer(self._connection)
 
     def _recv(self):
-        self.accept_connection()
-        receive_msg(
-            self._buffer,
-            self._received,
-            self._stop,
-            self.msg_end,
-            self._logger,
-        )
+        if self._reconnect:
+            while True:
+                self.accept_connection()
+                receive_msg(
+                    self._buffer,
+                    self._received,
+                    self._stop,
+                    self.msg_end,
+                    self._logger,
+                )
+                self.listen()
+        else:
+            self.accept_connection()
+            receive_msg(
+                self._buffer,
+                self._received,
+                self._stop,
+                self.msg_end,
+                self._logger,
+            )
 
     def start_main_thread(self) -> None:
         self.listen()
@@ -144,14 +156,26 @@ class ServerSender(ServerBase):
         self._send()
 
     def _send(self):
-        self.accept_connection()
-        send_msg(
-            self._connection,
-            self._to_send,
-            self._stop,
-            self.msg_end,
-            self._logger
-        )
+        if self._reconnect:
+            while True:
+                self.accept_connection()
+                send_msg(
+                    self._connection,
+                    self._to_send,
+                    self._stop,
+                    self.msg_end,
+                    self._logger
+                )
+                self.listen()
+        else:
+            self.accept_connection()
+            send_msg(
+                self._connection,
+                self._to_send,
+                self._stop,
+                self.msg_end,
+                self._logger
+            )
 
 
 class Server(ServerBase):
@@ -179,7 +203,7 @@ class Server(ServerBase):
 
         self._send_thread = threading.Thread(target=self._send, daemon=True)
         self._recv_thread = threading.Thread(target=self._recv, daemon=True)
-        self._wait_for_conn = threading.Event()
+        self._connected = threading.Event()
 
     @property
     def to_send(self) -> queue.Queue[str]:
@@ -198,31 +222,58 @@ class Server(ServerBase):
         return self._recv_thread
 
     def _send(self) -> None:
-        self._wait_for_conn.wait()
-        send_msg(
-            self._connection,
-            self._to_send,
-            self._stop_send,
-            self.msg_end,
-            self._logger,
-            self.__class__.__name__
-        )
+        self._connected.wait()
+        if self._reconnect:
+            while True:
+                send_msg(
+                    self._connection,
+                    self._to_send,
+                    self._stop_send,
+                    self.msg_end,
+                    self._logger,
+                    self.__class__.__name__
+                )
+                self._connected.clear()
+                self.listen()
+                self.accept_connection()
+        else:
+            send_msg(
+                self._connection,
+                self._to_send,
+                self._stop_send,
+                self.msg_end,
+                self._logger,
+                self.__class__.__name__
+            )
 
     def _recv(self):
-        self._wait_for_conn.wait()
-        receive_msg(
-            self._buffer,
-            self._received,
-            self._stop_receive,
-            self.msg_end,
-            self._logger,
-            self.__class__.__name__
-        )
+        self._connected.wait()
+        if self._reconnect:
+            while True:
+                receive_msg(
+                    self._buffer,
+                    self._received,
+                    self._stop_receive,
+                    self.msg_end,
+                    self._logger,
+                    self.__class__.__name__
+                )
+                self._connected.wait()
+        else:
+            receive_msg(
+                self._buffer,
+                self._received,
+                self._stop_receive,
+                self.msg_end,
+                self._logger,
+                self.__class__.__name__
+            )
+
 
     def accept_connection(self) -> None:
         super().accept_connection()
         self._buffer = Buffer(self._connection)
-        self._wait_for_conn.set()
+        self._connected.set()
 
     def start(self) -> None:
         """ Start this server in a new thread. """

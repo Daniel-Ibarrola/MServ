@@ -27,6 +27,7 @@ def receive_msg(
             msg_queue.put(data)
         elif logger:
             logger.info(f"{name} failed to receive message")
+            break
 
     # teardown()
     if logger is not None:
