@@ -114,23 +114,29 @@ class ServerReceiver(ServerBase):
         if self._reconnect:
             while not self._stop_reconnect():
                 self.accept_connection()
-                receive_msg(
-                    self._buffer,
-                    self._received,
-                    self._stop,
-                    self.msg_end,
-                    self._logger,
-                )
+                while not self._stop():
+                    error = receive_msg(
+                        self._buffer,
+                        self._received,
+                        self.msg_end,
+                        self._logger,
+                        self.__class__.__name__
+                    )
+                    if error:
+                        break
                 self.listen()
         else:
             self.accept_connection()
-            receive_msg(
-                self._buffer,
-                self._received,
-                self._stop,
-                self.msg_end,
-                self._logger,
-            )
+            while not self._stop():
+                error = receive_msg(
+                    self._buffer,
+                    self._received,
+                    self.msg_end,
+                    self._logger,
+                    self.__class__.__name__
+                )
+                if error:
+                    break
 
     def start_main_thread(self) -> None:
         self.listen()
@@ -167,23 +173,29 @@ class ServerSender(ServerBase):
         if self._reconnect:
             while not self._stop_reconnect():
                 self.accept_connection()
-                send_msg(
-                    self._connection,
-                    self._to_send,
-                    self._stop,
-                    self.msg_end,
-                    self._logger
-                )
+                while not self._stop():
+                    error = send_msg(
+                        self._connection,
+                        self._to_send,
+                        self.msg_end,
+                        self._logger,
+                        self.__class__.__name__
+                    )
+                    if error:
+                        break
                 self.listen()
         else:
             self.accept_connection()
-            send_msg(
-                self._connection,
-                self._to_send,
-                self._stop,
-                self.msg_end,
-                self._logger
-            )
+            while not self._stop():
+                error = send_msg(
+                    self._connection,
+                    self._to_send,
+                    self.msg_end,
+                    self._logger,
+                    self.__class__.__name__
+                )
+                if error:
+                    break
 
 
 class Server(ServerBase):
@@ -233,49 +245,57 @@ class Server(ServerBase):
         self._connected.wait()
         if self._reconnect:
             while not self._stop_reconnect():
-                send_msg(
-                    self._connection,
-                    self._to_send,
-                    self._stop_send,
-                    self.msg_end,
-                    self._logger,
-                    self.__class__.__name__
-                )
+                while not self._stop_send():
+                    error = send_msg(
+                        self._connection,
+                        self._to_send,
+                        self.msg_end,
+                        self._logger,
+                        self.__class__.__name__
+                    )
+                    if error:
+                        break
                 self._connected.clear()
                 self.listen()
                 self.accept_connection()
         else:
-            send_msg(
-                self._connection,
-                self._to_send,
-                self._stop_send,
-                self.msg_end,
-                self._logger,
-                self.__class__.__name__
-            )
+            while not self._stop_send():
+                error = send_msg(
+                    self._connection,
+                    self._to_send,
+                    self.msg_end,
+                    self._logger,
+                    self.__class__.__name__
+                )
+                if error:
+                    break
 
     def _recv(self):
         self._connected.wait()
         if self._reconnect:
             while not self._stop_reconnect():
-                receive_msg(
+                while not self._stop_receive():
+                    error = receive_msg(
+                        self._buffer,
+                        self._received,
+                        self.msg_end,
+                        self._logger,
+                        self.__class__.__name__
+                    )
+                    if error:
+                        break
+                self._connected.wait()
+        else:
+            while not self._stop_receive():
+                error = receive_msg(
                     self._buffer,
                     self._received,
-                    self._stop_receive,
                     self.msg_end,
                     self._logger,
                     self.__class__.__name__
                 )
-                self._connected.wait()
-        else:
-            receive_msg(
-                self._buffer,
-                self._received,
-                self._stop_receive,
-                self.msg_end,
-                self._logger,
-                self.__class__.__name__
-            )
+                if error:
+                    break
 
     def accept_connection(self) -> None:
         super().accept_connection()

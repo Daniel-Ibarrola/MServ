@@ -22,12 +22,14 @@ class ClientBase:
             address: tuple[str, int],
             reconnect: bool = True,
             stop: Optional[Callable[[], bool]] = lambda: False,
+            stop_reconnect: Optional[Callable[[], bool]] = lambda: False,
             logger: Optional[logging.Logger] = None,
     ):
         self._address = address
         self._socket = None
         self._reconnect = reconnect
         self._stop = stop
+        self._stop_reconnect = stop_reconnect
         self._logger = logger
 
         self._run_thread = threading.Thread()
@@ -89,6 +91,7 @@ class ClientBase:
 
     def shutdown(self) -> None:
         self._stop = lambda: True
+        self._stop_reconnect = lambda: True
         self.join()
 
     def __enter__(self):
@@ -112,7 +115,7 @@ class ClientReceiver(ClientBase):
     ):
         super().__init__(address, reconnect, stop, logger)
         self.msg_end = b"\r\n"
-        self._buffer = None  # type: Buffer
+        self._buffer = None  # type: Optional[Buffer]
         self._received = received if received is not None else queue.Queue()
         self._run_thread = threading.Thread(target=self._recv, daemon=True)
 
@@ -130,24 +133,29 @@ class ClientReceiver(ClientBase):
 
     def _recv(self):
         if self._reconnect:
-            while True:
-                # receive_msg exits if there is a connection error
-                receive_msg(
-                    self._buffer,
-                    self._received,
-                    self._stop,
-                    self.msg_end,
-                    self._logger
-                )
+            while not self._stop_reconnect():
+                while not self._stop():
+                    error = receive_msg(
+                        self._buffer,
+                        self._received,
+                        self.msg_end,
+                        self._logger,
+                        self.__class__.__name__
+                    )
+                    if error:
+                        break
                 self.connect()
         else:
-            receive_msg(
-                self._buffer,
-                self._received,
-                self._stop,
-                self.msg_end,
-                self._logger
-            )
+            while not self._stop():
+                error = receive_msg(
+                    self._buffer,
+                    self._received,
+                    self.msg_end,
+                    self._logger,
+                    self.__class__.__name__
+                )
+                if error:
+                    break
 
 
 class ClientSender(ClientBase):
@@ -172,22 +180,29 @@ class ClientSender(ClientBase):
 
     def _send(self) -> None:
         if self._reconnect:
-            while True:
-                send_msg(
+            while not self._stop_reconnect():
+                while not self._stop():
+                    error = send_msg(
+                        self._socket,
+                        self._to_send,
+                        self.msg_end,
+                        self._logger,
+                        self.__class__.__name__
+                    )
+                    if error:
+                        break
+                self.connect()
+        else:
+            while not self._stop():
+                error = send_msg(
                     self._socket,
                     self._to_send,
-                    self._stop,
                     self.msg_end,
-                    self._logger
+                    self._logger,
+                    self.__class__.__name__
                 )
-        else:
-            send_msg(
-                self._socket,
-                self._to_send,
-                self._stop,
-                self.msg_end,
-                self._logger
-            )
+                if error:
+                    break
 
     def start_main_thread(self) -> None:
         """ Start this client in the main thread"""
@@ -244,48 +259,56 @@ class Client(ClientBase):
 
     def _send(self) -> None:
         if self._reconnect:
-            while True:
-                send_msg(
-                    self._socket,
-                    self._to_send,
-                    self._stop_send,
-                    self.msg_end,
-                    self._logger,
-                    self.__class__.__name__
-                )
+            while not self._stop_reconnect():
+                while not self._stop_send():
+                    error = send_msg(
+                        self._socket,
+                        self._to_send,
+                        self.msg_end,
+                        self._logger,
+                        self.__class__.__name__
+                    )
+                    if error:
+                        break
                 self._connected.clear()
                 self.connect()
         else:
-            send_msg(
-                self._socket,
-                self._to_send,
-                self._stop_send,
-                self.msg_end,
-                self._logger,
-                self.__class__.__name__
-            )
-
-    def _recv(self):
-        if self._reconnect:
-            while True:
-                receive_msg(
-                    self._buffer,
-                    self._received,
-                    self._stop_receive,
+            while not self._stop_send():
+                error = send_msg(
+                    self._socket,
+                    self._to_send,
                     self.msg_end,
                     self._logger,
                     self.__class__.__name__
                 )
+                if error:
+                    break
+
+    def _recv(self):
+        if self._reconnect:
+            while not self._stop_reconnect():
+                while not self._stop_receive():
+                    error = receive_msg(
+                        self._buffer,
+                        self._received,
+                        self.msg_end,
+                        self._logger,
+                        self.__class__.__name__
+                    )
+                    if error:
+                        break
                 self._connected.wait()
         else:
-            receive_msg(
-                self._buffer,
-                self._received,
-                self._stop_receive,
-                self.msg_end,
-                self._logger,
-                self.__class__.__name__
-            )
+            while not self._stop_receive():
+                error = receive_msg(
+                    self._buffer,
+                    self._received,
+                    self.msg_end,
+                    self._logger,
+                    self.__class__.__name__
+                )
+                if error:
+                    break
 
     def start(self) -> None:
         """ Start this client in a new thread. """

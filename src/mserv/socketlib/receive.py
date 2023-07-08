@@ -1,6 +1,6 @@
 import logging
 import queue
-from typing import Callable, Optional
+from typing import Optional
 from mserv.socketlib.buffer import Buffer
 
 
@@ -14,21 +14,20 @@ def get_msg(buffer: Buffer, msg_end: bytes) -> Optional[bytes]:
 def receive_msg(
         buffer: Buffer,
         msg_queue: queue.Queue,
-        stop: Callable[[], bool],
         msg_end: bytes,
         logger: Optional[logging.Logger] = None,
         name: str = ""
-) -> None:
-    # setup()
-    while not stop():
-        data = get_msg(buffer, msg_end)
-        if data is not None:
-            # handle_message_received(data)
-            msg_queue.put(data)
-        elif logger:
-            logger.info(f"{name} failed to receive message")
-            break
+) -> bool:
+    """ Receive a message from a socket.
 
-    # teardown()
-    if logger is not None:
-        logger.debug("Receive thread stopped")
+        Returns True if there is an error.
+    """
+    data = get_msg(buffer, msg_end)
+    if data is not None:
+        # handle_message_received(data)
+        msg_queue.put(data)
+    else:
+        if logger:
+            logger.info(f"{name} failed to receive message")
+        return True
+    return False
