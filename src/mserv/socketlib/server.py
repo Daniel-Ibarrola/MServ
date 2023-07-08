@@ -20,6 +20,7 @@ class ServerBase:
             address: tuple[str, int],
             reconnect: bool = True,
             stop: Optional[Callable[[], bool]] = lambda: False,
+            stop_reconnect: Optional[Callable[[], bool]] = lambda: False,
             logger: Optional[logging.Logger] = None,
     ):
         self._address = address
@@ -27,6 +28,7 @@ class ServerBase:
         self._connection = None  # The client connection
         self._conn_details = None
         self._stop = stop
+        self._stop_reconnect = stop_reconnect
 
         self._reconnect = reconnect
         self._logger = logger
@@ -45,6 +47,11 @@ class ServerBase:
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._socket.bind(self._address)
         self._socket.listen()
+        if self._logger is not None:
+            self._logger.info(
+                f"{self.__class__.__name__}: "
+                f"Listening for connections in {self._address}"
+            )
 
     def accept_connection(self) -> None:
         self._connection, self._conn_details = self._socket.accept()
@@ -63,6 +70,7 @@ class ServerBase:
 
     def shutdown(self) -> None:
         self._stop = lambda: True
+        self._stop_reconnect = lambda: True
         self.join()
 
     def __enter__(self):
@@ -104,7 +112,7 @@ class ServerReceiver(ServerBase):
 
     def _recv(self):
         if self._reconnect:
-            while True:
+            while not self._stop_reconnect():
                 self.accept_connection()
                 receive_msg(
                     self._buffer,
@@ -157,7 +165,7 @@ class ServerSender(ServerBase):
 
     def _send(self):
         if self._reconnect:
-            while True:
+            while not self._stop_reconnect():
                 self.accept_connection()
                 send_msg(
                     self._connection,
@@ -224,7 +232,7 @@ class Server(ServerBase):
     def _send(self) -> None:
         self._connected.wait()
         if self._reconnect:
-            while True:
+            while not self._stop_reconnect():
                 send_msg(
                     self._connection,
                     self._to_send,
@@ -249,7 +257,7 @@ class Server(ServerBase):
     def _recv(self):
         self._connected.wait()
         if self._reconnect:
-            while True:
+            while not self._stop_reconnect():
                 receive_msg(
                     self._buffer,
                     self._received,
@@ -268,7 +276,6 @@ class Server(ServerBase):
                 self._logger,
                 self.__class__.__name__
             )
-
 
     def accept_connection(self) -> None:
         super().accept_connection()
@@ -290,4 +297,5 @@ class Server(ServerBase):
     def shutdown(self) -> None:
         self._stop_send = lambda: True
         self._stop_receive = lambda: True
+        self._stop_reconnect = lambda: True
         self.join()
