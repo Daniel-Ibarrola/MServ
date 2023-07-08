@@ -14,7 +14,7 @@ class AbstractService(abc.ABC):
         of a service is to apply some function to the inputs to obtain
         the outputs that can then be processed by another service or send to a receptor.
 
-        Most services are meant to run definitively, and so they do not run in the
+        Most services are meant to run indefinitely, and so they do not run in the
         main thread. However, a custom function to terminate the service when needed
         can be used, and the service can also run in the main thread if necessary.
     """
