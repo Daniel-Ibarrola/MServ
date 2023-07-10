@@ -38,7 +38,7 @@ def start_socket(
         else:
             socket = Server(address, reconnect=reconnect, logger=logger)
         msg_logger = MessageLogger(socket.received, logger)
-        msg_gen = MessageGenerator(socket.to_send, name, logger)
+        msg_gen = MessageGenerator(socket.to_send, name=name, logger=logger)
 
     elif sock_type == "receiver":
         if client:
@@ -52,7 +52,7 @@ def start_socket(
             socket = ClientSender(address, reconnect=reconnect, logger=logger)
         else:
             socket = ServerSender(address, reconnect=reconnect, logger=logger)
-        msg_gen = MessageGenerator(socket.to_send, name, logger)
+        msg_gen = MessageGenerator(socket.to_send, name=name, logger=logger)
 
     else:
         raise ValueError(f"Unexpected type {sock_type}")

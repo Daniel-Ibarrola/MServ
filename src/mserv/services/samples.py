@@ -18,7 +18,7 @@ class MessageLogger(AbstractService):
 
 class MessageGenerator(AbstractService):
 
-    def __init__(self, messages: queue.Queue, name: str, logger: logging.Logger):
+    def __init__(self, messages: queue.Queue, logger: logging.Logger, name: Optional[str] = ""):
         super().__init__(out_queue=messages, logger=logger)
         self.name = name
 

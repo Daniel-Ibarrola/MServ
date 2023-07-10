@@ -48,7 +48,6 @@ class ClientBase:
 
     def connect(self, timeout: Optional[float] = None) -> None:
         """ Connect to the server. """
-        # TODO: reconnect
         start = time.time()
         if timeout is None:
             timeout = float("inf")
