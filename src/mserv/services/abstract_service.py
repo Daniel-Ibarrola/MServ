@@ -67,7 +67,7 @@ class AbstractService(abc.ABC):
         self._process_thread.join()
 
     def shutdown(self) -> None:
-        self._stop = True
+        self._stop = lambda: True
         self.join()
         if self._logger is not None:
             self._logger.debug(f"Shutting down {self.__class__.__name__}")

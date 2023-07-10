@@ -94,7 +94,11 @@ class ServerReceiver(ServerBase):
             stop: Optional[Callable[[], bool]] = lambda: False,
             logger: Optional[logging.Logger] = None,
     ):
-        super().__init__(address, reconnect, stop, logger)
+        super().__init__(
+            address=address,
+            reconnect=reconnect,
+            stop=stop,
+            logger=logger)
         self.msg_end = b"\r\n"
         self._buffer = None  # type: Buffer
         self._received = received if received is not None else queue.Queue()
@@ -154,7 +158,11 @@ class ServerSender(ServerBase):
             stop: Optional[Callable[[], bool]] = lambda: False,
             logger: Optional[logging.Logger] = None,
     ):
-        super().__init__(address, reconnect, stop, logger)
+        super().__init__(
+            address=address,
+            reconnect=reconnect,
+            stop=stop,
+            logger=logger)
         self.msg_end = b"\r\n"
         self._to_send = to_send if to_send is not None else queue.Queue()
         self._run_thread = threading.Thread(
@@ -212,7 +220,7 @@ class Server(ServerBase):
             stop_send: Optional[Callable[[], bool]] = lambda: False,
             logger: Optional[logging.Logger] = None,
     ):
-        super().__init__(address, reconnect, logger=logger)
+        super().__init__(address=address, reconnect=reconnect, logger=logger)
         self.msg_end = b"\r\n"
         self._buffer = None  # type: Optional[Buffer]
 
