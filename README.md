@@ -111,3 +111,8 @@ pip install -r requirements/dev.txt
 cd src
 python setup.py develop
 ```
+
+## License
+
+`mserv` was created by Daniel Ibarrola. It is licensed under the terms
+of the MIT license.

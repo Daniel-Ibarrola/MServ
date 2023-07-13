@@ -331,3 +331,31 @@ class Client(ClientBase):
         self._stop_send = lambda: True
         self._stop_receive = lambda: True
         self.join()
+
+
+class ClientReportAlive(Client):
+    """ Client that receives messages and sends and alive message periodically
+        to the server
+    """
+
+    def _send_alive_message(self) -> None:
+        while not self._stop_send():
+            try:
+                self._socket.sendall(b"Alive\r\n")
+                # handle_msg_sent()
+            except ConnectionError:
+                if self._logger is not None:
+                    self._logger.info(
+                        f"{self.__class__.__name__} failed to send message. Connection lost")
+                break
+            time.sleep(30)
+
+    def _send(self) -> None:
+        if self._reconnect:
+            while not self._stop_reconnect():
+                self._send_alive_message()
+                self._connected.clear()
+                self.connect()
+        else:
+            while not self._stop_send():
+                self._send_alive_message()
