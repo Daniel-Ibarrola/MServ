@@ -5,7 +5,7 @@ setup(
     name="mserv",
     author="Daniel Ibarrola",
     author_email="daniel.ibarrola.sanchez@gmail.com",
-    version="0.1.0",
+    version="0.1.1",
     packages=find_packages(),
     description="Helper library to implement different microservices"
 )
