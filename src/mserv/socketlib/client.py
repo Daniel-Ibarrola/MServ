@@ -34,6 +34,10 @@ class ClientBase:
 
         self._run_thread = threading.Thread()
 
+        self._wait_for_connection = threading.Event()
+        self._connection_failed = False
+        self._connect_timeout = None
+
     @property
     def ip(self) -> str:
         return self._address[0]
@@ -48,6 +52,11 @@ class ClientBase:
 
     def connect(self, timeout: Optional[float] = None) -> None:
         """ Connect to the server. """
+        self._connect_timeout = timeout
+        connect_thread = threading.Thread(target=self._connect_to_server, args=(timeout,), daemon=True)
+        connect_thread.start()
+
+    def _connect_to_server(self, timeout: Optional[float] = None) -> None:
         start = time.time()
         if timeout is None:
             timeout = float("inf")
@@ -63,8 +72,9 @@ class ClientBase:
                 error = True
                 time.sleep(1)
 
-        if error:
-            raise ConnectionError(
+        if error and self._logger:
+            self._connection_failed = True
+            self._logger.error(
                 f"{self.__class__.__name__}: "
                 f"failed to establish connection to {(self.ip, self.port)}"
             )
@@ -73,6 +83,8 @@ class ClientBase:
             self._logger.info(
                 f"{self.__class__.__name__}: connected to {(self.ip, self.port)}"
             )
+
+        self._wait_for_connection.set()
 
     def set_timeout(self, timeout: float):
         """ Set a timeout for sending and receiving messages.
@@ -93,12 +105,15 @@ class ClientBase:
         self._stop_reconnect = lambda: True
         self.join()
 
+    def close_connection(self) -> None:
+        if self._socket is not None:
+            self._socket.close()
+
     def __enter__(self):
         return self
 
     def __exit__(self, *args):
-        if self._socket is not None:
-            self._socket.close()
+        self.close_connection()
 
 
 class ClientReceiver(ClientBase):
@@ -131,10 +146,17 @@ class ClientReceiver(ClientBase):
         self._recv()
 
     def connect(self, timeout: Optional[float] = None) -> None:
-        super().connect(timeout)
-        self._buffer = Buffer(self._socket)
+        self._connect_timeout = timeout
+        connect_thread = threading.Thread(target=self._connect_to_server, args=(timeout,), daemon=True)
+        connect_thread.start()
+
+    def _connect_to_server(self, timeout: Optional[float] = None) -> None:
+        super()._connect_to_server(timeout)
+        if not self._connection_failed:
+            self._buffer = Buffer(self._socket)
 
     def _recv(self):
+        self._wait_for_connection.wait()
         if self._reconnect:
             while not self._stop_reconnect():
                 while not self._stop():
@@ -147,7 +169,7 @@ class ClientReceiver(ClientBase):
                     )
                     if error:
                         break
-                self.connect()
+                self._connect_to_server(self._connect_timeout)
         else:
             while not self._stop():
                 error = receive_msg(
@@ -186,6 +208,7 @@ class ClientSender(ClientBase):
         return self._to_send
 
     def _send(self) -> None:
+        self._wait_for_connection.wait()
         if self._reconnect:
             while not self._stop_reconnect():
                 while not self._stop():
@@ -198,7 +221,7 @@ class ClientSender(ClientBase):
                     )
                     if error:
                         break
-                self.connect()
+                self._connect_to_server(self._connect_timeout)
         else:
             while not self._stop():
                 error = send_msg(
@@ -219,6 +242,7 @@ class ClientSender(ClientBase):
 class Client(ClientBase):
     """ A client that sends and receives messages to and from a server.
     """
+
     def __init__(
             self,
             address: tuple[str, int],
@@ -240,7 +264,7 @@ class Client(ClientBase):
 
         self._send_thread = threading.Thread(target=self._send, daemon=True)
         self._recv_thread = threading.Thread(target=self._recv, daemon=True)
-        self._connected = threading.Event()
+
 
     @property
     def to_send(self) -> queue.Queue[str]:
@@ -259,12 +283,16 @@ class Client(ClientBase):
         return self._recv_thread
 
     def connect(self, timeout: Optional[float] = None) -> None:
-        # TODO: connect can run in another thread
-        super().connect(timeout)
+        self._connect_timeout = timeout
+        connect_thread = threading.Thread(target=self._connect_to_server, args=(timeout,), daemon=True)
+        connect_thread.start()
+
+    def _connect_to_server(self, timeout: Optional[float] = None) -> None:
+        super()._connect_to_server(timeout)
         self._buffer = Buffer(self._socket)
-        self._connected.set()
 
     def _send(self) -> None:
+        self._wait_for_connection.wait()
         if self._reconnect:
             while not self._stop_reconnect():
                 while not self._stop_send():
@@ -277,8 +305,8 @@ class Client(ClientBase):
                     )
                     if error:
                         break
-                self._connected.clear()
-                self.connect()
+                self._wait_for_connection.clear()
+                self._connect_to_server(self._connect_timeout)
         else:
             while not self._stop_send():
                 error = send_msg(
@@ -292,6 +320,7 @@ class Client(ClientBase):
                     break
 
     def _recv(self):
+        self._wait_for_connection.wait()
         if self._reconnect:
             while not self._stop_reconnect():
                 while not self._stop_receive():
@@ -303,9 +332,9 @@ class Client(ClientBase):
                         self.__class__.__name__
                     )
                     if error:
-                        self._connected.clear()
+                        self._wait_for_connection.clear()
                         break
-                self._connected.wait()
+                self._wait_for_connection.wait()
         else:
             while not self._stop_receive():
                 error = receive_msg(

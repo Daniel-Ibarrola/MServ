@@ -100,7 +100,7 @@ class ServerReceiver(ServerBase):
             stop=stop,
             logger=logger)
         self.msg_end = b"\r\n"
-        self._buffer = None  # type: Buffer
+        self._buffer = None  # type: Optional[Buffer]
         self._received = received if received is not None else queue.Queue()
         self._run_thread = threading.Thread(
             target=self._recv, daemon=True
