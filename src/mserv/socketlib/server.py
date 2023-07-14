@@ -76,11 +76,14 @@ class ServerBase:
     def __enter__(self):
         return self
 
-    def __exit__(self, *args):
+    def close_connections(self) -> None:
         if self._connection is not None:
             self._connection.close()
         if self._socket is not None:
             self._socket.close()
+
+    def __exit__(self, *args):
+        self.close_connections()
 
 
 class ServerReceiver(ServerBase):
