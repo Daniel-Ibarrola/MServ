@@ -91,6 +91,7 @@ def parse_args():
         type=str,
         default="localhost",
         help="The ip where the client will connect or where the server will connect"
+             " (default localhost)."
     )
     parser.add_argument(
         "--port",
@@ -98,12 +99,13 @@ def parse_args():
         type=int,
         default=12345,
         help="The port where the client will connect or where the server will connect"
+             " (default 12345)."
     )
     parser.add_argument(
         "--server",
         "-s",
         action="store_true",
-        help="If this flag is passed a server will be started. If not a client"
+        help="If this flag is passed a server will be started. If not a client."
     )
     parser.add_argument(
         "--type",
@@ -112,6 +114,7 @@ def parse_args():
         choices=["multi", "receiver", "sender"],
         default="multi",
         help="The type of the server or client. Can be multi, receiver or sender"
+             " (default multi)."
     )
     parser.add_argument(
         "--reconnect",
