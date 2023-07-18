@@ -26,7 +26,7 @@ class ClientBase:
             logger: Optional[logging.Logger] = None,
     ):
         self._address = address
-        self._socket = None
+        self._socket = None  # type: Optional[socket.socket]
         self._reconnect = reconnect
         self._stop = stop
         self._stop_reconnect = stop_reconnect
@@ -89,9 +89,7 @@ class ClientBase:
     def set_timeout(self, timeout: float):
         """ Set a timeout for sending and receiving messages.
         """
-        timeval = struct.pack("ll", timeout, 0)
-        self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_RCVTIMEO, timeval)
-        self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_SNDTIMEO, timeval)
+        self._socket.settimeout(timeout)
 
     def start(self) -> None:
         """ Start this client in a new thread. """
@@ -249,8 +247,8 @@ class Client(ClientBase):
             received: Optional[queue.Queue[bytes]] = None,
             to_send: Optional[queue.Queue[str]] = None,
             reconnect: bool = True,
-            stop_receive: Optional[Callable[[], bool]] = lambda: False,
-            stop_send: Optional[Callable[[], bool]] = lambda: False,
+            stop_receive: Callable[[], bool] = lambda: False,
+            stop_send: Callable[[], bool] = lambda: False,
             logger: Optional[logging.Logger] = None,
     ):
         super().__init__(address=address, reconnect=reconnect, logger=logger)
@@ -264,7 +262,6 @@ class Client(ClientBase):
 
         self._send_thread = threading.Thread(target=self._send, daemon=True)
         self._recv_thread = threading.Thread(target=self._recv, daemon=True)
-
 
     @property
     def to_send(self) -> queue.Queue[str]:
@@ -319,7 +316,7 @@ class Client(ClientBase):
                 if error:
                     break
 
-    def _recv(self):
+    def _recv(self) -> None:
         self._wait_for_connection.wait()
         if self._reconnect:
             while not self._stop_reconnect():
@@ -383,7 +380,7 @@ class ClientReportAlive(Client):
         if self._reconnect:
             while not self._stop_reconnect():
                 self._send_alive_message()
-                self._connected.clear()
+                self._wait_for_connection.clear()
                 self.connect()
         else:
             while not self._stop_send():

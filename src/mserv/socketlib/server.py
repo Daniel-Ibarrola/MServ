@@ -44,6 +44,8 @@ class ServerBase:
         return self._address[1]
 
     def listen(self) -> None:
+        """ Creates the socket and puts it in listen mode.
+        """
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._socket.bind(self._address)
         self._socket.listen()
@@ -54,6 +56,8 @@ class ServerBase:
             )
 
     def accept_connection(self) -> None:
+        """ Accept a new connection.
+        """
         self._connection, self._conn_details = self._socket.accept()
         if self._logger is not None:
             self._logger.info(
@@ -62,6 +66,11 @@ class ServerBase:
             )
 
     def start(self) -> None:
+        """ Start this server in a new thread.
+
+            If this method is used, there is no need to call the `listen` and `accept_connection`
+            as they are called under the hood.
+        """
         self.listen()
         self._run_thread.start()
 

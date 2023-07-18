@@ -22,8 +22,8 @@ class AbstractService(abc.ABC):
             self,
             in_queue: Optional[queue.Queue] = None,
             out_queue: Optional[queue.Queue] = None,
-            stop: Optional[Callable[[], bool]] = lambda: False,
-            events: dict[str, threading.Event] = None,
+            stop: Callable[[], bool] = lambda: False,
+            events: Optional[dict[str, threading.Event]] = None,
             logger: Optional[logging.Logger] = None,
     ):
         # Main thread of this service
