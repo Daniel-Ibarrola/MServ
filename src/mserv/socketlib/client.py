@@ -21,6 +21,7 @@ class ClientBase:
             self,
             address: tuple[str, int],
             reconnect: bool = True,
+            timeout: Optional[float] = None,
             stop: Optional[Callable[[], bool]] = lambda: False,
             stop_reconnect: Optional[Callable[[], bool]] = lambda: False,
             logger: Optional[logging.Logger] = None,
@@ -38,6 +39,8 @@ class ClientBase:
         self._connection_failed = False
         self._connect_timeout = None
 
+        self._timeout = timeout  # Timeout for send and receive
+
     @property
     def ip(self) -> str:
         return self._address[0]
@@ -51,7 +54,10 @@ class ClientBase:
         return self._run_thread
 
     def connect(self, timeout: Optional[float] = None) -> None:
-        """ Connect to the server. """
+        """ Connect to the server. This will attempt to connect to the server indefinitively
+            unless a timeout is give.
+
+        """
         self._connect_timeout = timeout
         connect_thread = threading.Thread(target=self._connect_to_server, args=(timeout,), daemon=True)
         connect_thread.start()
@@ -66,6 +72,8 @@ class ClientBase:
             self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             try:
                 self._socket.connect((self.ip, self.port))
+                if self._timeout is not None:
+                    self._socket.settimeout(self._timeout)
                 error = False
                 break
             except ConnectionError:
@@ -85,11 +93,6 @@ class ClientBase:
             )
 
         self._wait_for_connection.set()
-
-    def set_timeout(self, timeout: float):
-        """ Set a timeout for sending and receiving messages.
-        """
-        self._socket.settimeout(timeout)
 
     def start(self) -> None:
         """ Start this client in a new thread. """
@@ -122,12 +125,14 @@ class ClientReceiver(ClientBase):
             address: tuple[str, int],
             received: Optional[queue.Queue[bytes]] = None,
             reconnect: bool = True,
+            timeout: Optional[float] = None,
             stop: Optional[Callable[[], bool]] = lambda: False,
             logger: Optional[logging.Logger] = None,
     ):
         super().__init__(
             address=address,
             reconnect=reconnect,
+            timeout=timeout,
             stop=stop,
             logger=logger)
         self.msg_end = b"\r\n"
@@ -189,12 +194,14 @@ class ClientSender(ClientBase):
             address: tuple[str, int],
             to_send: Optional[queue.Queue[str]] = None,
             reconnect: bool = True,
+            timeout: Optional[float] = None,
             stop: Optional[Callable[[], bool]] = lambda: False,
             logger: Optional[logging.Logger] = None,
     ):
         super().__init__(
             address=address,
             reconnect=reconnect,
+            timeout=timeout,
             stop=stop,
             logger=logger)
         self.msg_end = b"\r\n"
@@ -247,11 +254,12 @@ class Client(ClientBase):
             received: Optional[queue.Queue[bytes]] = None,
             to_send: Optional[queue.Queue[str]] = None,
             reconnect: bool = True,
+            timeout: Optional[float] = None,
             stop_receive: Callable[[], bool] = lambda: False,
             stop_send: Callable[[], bool] = lambda: False,
             logger: Optional[logging.Logger] = None,
     ):
-        super().__init__(address=address, reconnect=reconnect, logger=logger)
+        super().__init__(address=address, reconnect=reconnect, timeout=timeout, logger=logger)
         self.msg_end = b"\r\n"
         self._buffer = None  # type: Optional[Buffer]
 

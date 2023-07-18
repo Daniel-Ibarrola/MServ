@@ -12,7 +12,10 @@ class Buffer:
         """ Get a message from the socket until the end of message is reached.
         """
         while msg_end not in self.buffer:
-            data = self.socket.recv(1024)
+            try:
+                data = self.socket.recv(1024)
+            except socket.timeout:
+                return
             if not data:  # socket closed
                 return None
             self.buffer += data

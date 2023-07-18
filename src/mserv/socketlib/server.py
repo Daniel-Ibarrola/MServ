@@ -19,12 +19,13 @@ class ServerBase:
             self,
             address: tuple[str, int],
             reconnect: bool = True,
+            timeout: Optional[float] = None,
             stop: Optional[Callable[[], bool]] = lambda: False,
             stop_reconnect: Optional[Callable[[], bool]] = lambda: False,
             logger: Optional[logging.Logger] = None,
     ):
         self._address = address
-        self._socket = None
+        self._socket = None  # type: Optional[socket.socket]
         self._connection = None  # The client connection
         self._conn_details = None
         self._stop = stop
@@ -34,6 +35,8 @@ class ServerBase:
         self._logger = logger
 
         self._run_thread = threading.Thread()
+
+        self._timeout = timeout  # Timeout for send and receive
 
     @property
     def ip(self) -> str:
@@ -59,6 +62,8 @@ class ServerBase:
         """ Accept a new connection.
         """
         self._connection, self._conn_details = self._socket.accept()
+        if self._timeout is not None:
+            self._connection.settimeout(self._timeout)
         if self._logger is not None:
             self._logger.info(
                 f"{self.__class__.__name__}: "
@@ -85,14 +90,14 @@ class ServerBase:
     def __enter__(self):
         return self
 
-    def close_connections(self) -> None:
+    def close_connection(self) -> None:
         if self._connection is not None:
             self._connection.close()
         if self._socket is not None:
             self._socket.close()
 
     def __exit__(self, *args):
-        self.close_connections()
+        self.close_connection()
 
 
 class ServerReceiver(ServerBase):
@@ -103,12 +108,14 @@ class ServerReceiver(ServerBase):
             address: tuple[str, int],
             received: Optional[queue.Queue[bytes]] = None,
             reconnect: bool = True,
+            timeout: Optional[float] = None,
             stop: Optional[Callable[[], bool]] = lambda: False,
             logger: Optional[logging.Logger] = None,
     ):
         super().__init__(
             address=address,
             reconnect=reconnect,
+            timeout=timeout,
             stop=stop,
             logger=logger)
         self.msg_end = b"\r\n"
@@ -167,12 +174,14 @@ class ServerSender(ServerBase):
             address: tuple[str, int],
             to_send: Optional[queue.Queue[str]] = None,
             reconnect: bool = True,
+            timeout: Optional[float] = None,
             stop: Optional[Callable[[], bool]] = lambda: False,
             logger: Optional[logging.Logger] = None,
     ):
         super().__init__(
             address=address,
             reconnect=reconnect,
+            timeout=timeout,
             stop=stop,
             logger=logger)
         self.msg_end = b"\r\n"
@@ -228,11 +237,12 @@ class Server(ServerBase):
             received: Optional[queue.Queue[bytes]] = None,
             to_send: Optional[queue.Queue[str]] = None,
             reconnect: bool = True,
+            timeout: Optional[float] = None,
             stop_receive: Optional[Callable[[], bool]] = lambda: False,
             stop_send: Optional[Callable[[], bool]] = lambda: False,
             logger: Optional[logging.Logger] = None,
     ):
-        super().__init__(address=address, reconnect=reconnect, logger=logger)
+        super().__init__(address=address, reconnect=reconnect, timeout=timeout, logger=logger)
         self.msg_end = b"\r\n"
         self._buffer = None  # type: Optional[Buffer]
 

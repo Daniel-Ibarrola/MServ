@@ -22,7 +22,7 @@ def send_msg(
     try:
         sock.sendall(msg_bytes)
         # handle_msg_sent()
-    except ConnectionError:
+    except (ConnectionError, socket.timeout):
         if logger is not None:
             logger.info(f"{name} failed to send message. Connection lost")
         return True
