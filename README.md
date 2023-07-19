@@ -15,13 +15,13 @@ source venv/bin/activate
 Install the latest version:
 
 ```shell
-pip install socketlib
+pip install pysocklib
 ```
 
 ## Contents
 
-### socketlib
-This module includes different socket clients and servers. The following classes are included:
+### Client and Servers
+This package includes different socket clients and servers. The following classes are included:
 
 - **ClientReceiver**: A client that receives messages from a server 
 - **ClientSender**: A client that sends data to a server
