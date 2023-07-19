@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.3.0 (19/07/2022)
+
+Continuous integration and deployment with GitHub actions.
+
 ## v0.2.0 (19/07/2022)
 
 ### Renamed package
