@@ -1,0 +1,46 @@
+# pyproject.toml
+
+[build-system]
+requires      = ["setuptools>=65.5.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "socketlib"
+version = "0.1.2"
+description = "Library to work with socket clients and servers."
+readme = "README.md"
+authors = [{ name = "Daniel Ibarrola", email = "daniel.ibarrola.sanchez@gmail.com" }]
+license = { file = "LICENSE" }
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+]
+keywords = ["socket", "client", "server"]
+requires-python = ">=3.11"
+
+[project.optional-dependencies]
+dev = ["build", "bumpver", "pytest", "pytest-mock"]
+
+[project.urls]
+Homepage = "https://github.com/Daniel-Ibarrola/SocketLib.git"
+
+[project.scripts]
+socketlib = "socketlib.__main__:main"
+
+[tool.bumpver]
+current_version = "0.1.2"
+version_pattern = "MAJOR.MINOR.PATCH"
+commit_message = "bump version {old_version} -> {new_version}"
+tag_message = "{new_version}"
+tag_scope = "default"
+commit = true
+tag = true
+push = false
+
+[tool.bumpver.file_patterns]
+"pyproject.toml" = [
+    'current_version = "{version}"',
+    'version = "{version}"'
+]
+"src/socketlib/__init__.py" = ["{version}"]

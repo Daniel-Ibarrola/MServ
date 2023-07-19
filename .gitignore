@@ -1,6 +1,8 @@
 src/socketlib.egg-info
 .idea/
+dist/
 venv/
+test-venv/
 temp/
 
 __pycache__

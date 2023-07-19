@@ -1,6 +1,8 @@
 # Changelog
 
 ## v0.2.0 (19/07/2022)
+
+### Renamed package
 Renamed the package to socketlib. All main classes can be directly imported from
 the socketlib module, for example:
 
@@ -11,6 +13,22 @@ from socketlib import Client, ClientSender, Server, ServerSender
 The `buffer.py`, `send.py`, and `receive.py` modules where moved to a
 module `basic`.
 
+### Updated installation and build tools
+
+- The package configuration was moved to the new file `pyproject.toml`. The setup file
+`setup.py` was removed.
+- First version of the package published to PyPi.
+- Readme updated-
+
+### CLI program
+
+The CLI program can now be called directly after installing the package like in 
+the following example:
+
+```shell
+socketlib --ip localhost --port 1234 --server
+python -m socketlib --ip localhost --port 1234 --server  # alternative way
+```
 
 ## v0.1.2 (18/07/2022)
 - All client and server classes can take an optional parameter 'timeout' to specify a timeout for

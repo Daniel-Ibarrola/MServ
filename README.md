@@ -15,7 +15,7 @@ source venv/bin/activate
 Install the latest version:
 
 ```shell
-pip install "git+https://github.com/Daniel-Ibarrola/MServ.git#egg=mserv&subdirectory=src"
+pip install socketlib
 ```
 
 ## Contents
@@ -48,9 +48,9 @@ and send them to the client.
 
 ```python
 # client.py
-from mserv.socketlib import ClientReceiver
-from mserv.services.samples import MessageLogger
-from mserv.utils.logger import get_module_logger
+from socketlib import ClientReceiver
+from socketlib.services.samples import MessageLogger
+from socketlib.utils.logger import get_module_logger
 
 if __name__ == "__main__":
 
@@ -75,8 +75,8 @@ if __name__ == "__main__":
 
 ```python
 # server.py
-from mserv.socketlib import ServerSender
-from mserv.services.samples import MessageGenerator
+from socketlib import ServerSender
+from socketlib.services.samples import MessageGenerator
 
 if __name__ == "__main__":
 
@@ -114,5 +114,5 @@ python setup.py develop
 
 ## License
 
-`mserv` was created by Daniel Ibarrola. It is licensed under the terms
+`socketlib` was created by Daniel Ibarrola. It is licensed under the terms
 of the MIT license.

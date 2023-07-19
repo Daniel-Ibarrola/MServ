@@ -4,3 +4,6 @@ from .basic.receive import get_msg, receive_msg
 from .client.client import Client, ClientReceiver, ClientSender
 from .services.abstract_service import AbstractService
 from .server.server import Server, ServerReceiver, ServerSender
+
+
+__version__ = "0.1.2"
