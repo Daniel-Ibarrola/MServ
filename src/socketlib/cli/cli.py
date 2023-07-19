@@ -2,8 +2,8 @@ import argparse
 import logging
 import queue
 
-from mserv.services.samples import MessageGenerator, MessageLogger
-from mserv.socketlib import (
+from socketlib.services.samples import MessageGenerator, MessageLogger
+from socketlib import (
     Client,
     ClientReceiver,
     ClientSender,
@@ -11,7 +11,7 @@ from mserv.socketlib import (
     ServerReceiver,
     ServerSender,
 )
-from mserv.utils.logger import get_module_logger
+from socketlib.utils.logger import get_module_logger
 
 
 def start_socket(

@@ -1,14 +1,13 @@
 import logging
 import queue
 import socket
-import struct
 import threading
 import time
 from typing import Callable, Optional
 
-from mserv.socketlib.buffer import Buffer
-from mserv.socketlib.send import send_msg
-from mserv.socketlib.receive import receive_msg
+from socketlib.basic.buffer import Buffer
+from socketlib.basic.send import send_msg
+from socketlib.basic.receive import receive_msg
 
 
 class ClientBase:

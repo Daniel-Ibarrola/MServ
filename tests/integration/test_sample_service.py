@@ -1,5 +1,5 @@
 from queue import Queue
-from mserv.services.samples import ToUpper
+from socketlib.services.samples import ToUpper
 
 
 def test_to_upper():

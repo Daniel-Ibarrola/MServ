@@ -2,7 +2,7 @@ import logging
 import queue
 import time
 from typing import Callable, Optional
-from mserv.services.abstract_service import AbstractService
+from socketlib.services.abstract_service import AbstractService
 
 
 class MessageLogger(AbstractService):

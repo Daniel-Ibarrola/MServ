@@ -4,9 +4,9 @@ import socket
 import threading
 from typing import Callable, Optional
 
-from mserv.socketlib.buffer import Buffer
-from mserv.socketlib.receive import receive_msg
-from mserv.socketlib.send import send_msg
+from socketlib.basic.buffer import Buffer
+from socketlib.basic.receive import receive_msg
+from socketlib.basic.send import send_msg
 
 
 class ServerBase:

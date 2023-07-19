@@ -1,5 +1,5 @@
 import queue
-from mserv.socketlib import (
+from socketlib import (
     Client,
     ClientReceiver,
     ClientSender,

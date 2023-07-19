@@ -2,10 +2,10 @@ from setuptools import setup, find_packages
 
 
 setup(
-    name="mserv",
+    name="socketlib",
     author="Daniel Ibarrola",
     author_email="daniel.ibarrola.sanchez@gmail.com",
-    version="0.1.1",
+    version="0.2.0",
     packages=find_packages(),
-    description="Helper library to implement different microservices"
+    description="Library to work with socket clients and servers"
 )

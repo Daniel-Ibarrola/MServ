@@ -1,4 +1,4 @@
-# MServ
+# SocketLib
 
 Helper library to implement socket client and servers as well as services to process, store, or 
 send data received or send trough sockets.

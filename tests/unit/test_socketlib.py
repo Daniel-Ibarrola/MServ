@@ -1,4 +1,4 @@
-from mserv.socketlib import Buffer
+from socketlib import Buffer
 
 
 class FakeSocket:

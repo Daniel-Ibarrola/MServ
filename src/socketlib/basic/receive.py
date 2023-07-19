@@ -1,7 +1,7 @@
 import logging
 import queue
 from typing import Optional
-from mserv.socketlib.buffer import Buffer
+from socketlib.basic.buffer import Buffer
 
 
 def get_msg(buffer: Buffer, msg_end: bytes) -> Optional[bytes]:

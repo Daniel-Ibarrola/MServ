@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.2.0 (19/07/2022)
+Renamed the package to socketlib. All main classes can be directly imported from
+the socketlib module, for example:
+
+```python
+from socketlib import Client, ClientSender, Server, ServerSender
+```
+
+The `buffer.py`, `send.py`, and `receive.py` modules where moved to a
+module `basic`.
+
+
 ## v0.1.2 (18/07/2022)
 - All client and server classes can take an optional parameter 'timeout' to specify a timeout for
 socket send and receive operations.
