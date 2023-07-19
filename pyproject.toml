@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pysocklib"
-version = "0.2.0"
+version = "0.3.0"
 description = "Library to work with socket clients and servers."
 readme = "README.md"
 authors = [{ name = "Daniel Ibarrola", email = "daniel.ibarrola.sanchez@gmail.com" }]
@@ -29,7 +29,7 @@ Homepage = "https://github.com/Daniel-Ibarrola/SocketLib.git"
 socketlib = "socketlib.__main__:main"
 
 [tool.bumpver]
-current_version = "0.2.0"
+current_version = "0.3.0"
 version_pattern = "MAJOR.MINOR.PATCH"
 commit_message = "bump version {old_version} -> {new_version}"
 tag_message = "{new_version}"
