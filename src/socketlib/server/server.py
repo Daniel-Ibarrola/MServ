@@ -5,7 +5,7 @@ import threading
 from typing import Callable, Optional
 
 from socketlib.basic.buffer import Buffer
-from socketlib.basic.receive import receive_msg
+from socketlib.basic.receive import receive_and_enqueue
 from socketlib.basic.send import get_and_send_messages
 
 
@@ -76,28 +76,10 @@ class ServerBase:
         """ Start this server in a new thread.
 
             If this method is used, there is no need to call the `listen` and `accept_connection`
-            as they are called under the hood.
+            as they are called behind the scenes.
         """
         self.listen()
         self._run_thread.start()
-
-    # def _get_and_send_messages(
-    #         self,
-    #         msg_queue: queue.Queue[str],
-    #         stop: Callable[[], bool]
-    # ) -> None:
-    #     while not stop():
-    #         msg = get_from_queue(msg_queue, timeout=self._timeout)
-    #         if msg is not None:
-    #             error = send_msg(
-    #                 self._connection,
-    #                 msg,
-    #                 self.msg_end,
-    #                 self._logger,
-    #                 self.__class__.__name__
-    #             )
-    #             if error:
-    #                 break
 
     def join(self) -> None:
         self._run_thread.join()
@@ -156,29 +138,27 @@ class ServerReceiver(ServerBase):
         if self._reconnect:
             while not self._stop_reconnect():
                 self.accept_connection()
-                while not self._stop():
-                    error = receive_msg(
-                        self._buffer,
-                        self._received,
-                        self.msg_end,
-                        self._logger,
-                        self.__class__.__name__
-                    )
-                    if error:
-                        break
+                receive_and_enqueue(
+                    buffer=self._buffer,
+                    msg_end=self.msg_end,
+                    msg_queue=self.received,
+                    stop=self._stop,
+                    timeout=self._timeout,
+                    logger=self._logger,
+                    name=self.__class__.__name__
+                )
                 self.listen()
         else:
             self.accept_connection()
-            while not self._stop():
-                error = receive_msg(
-                    self._buffer,
-                    self._received,
-                    self.msg_end,
-                    self._logger,
-                    self.__class__.__name__
-                )
-                if error:
-                    break
+            receive_and_enqueue(
+                buffer=self._buffer,
+                msg_end=self.msg_end,
+                msg_queue=self.received,
+                stop=self._stop,
+                timeout=self._timeout,
+                logger=self._logger,
+                name=self.__class__.__name__
+            )
 
     def start_main_thread(self) -> None:
         self.listen()
@@ -318,28 +298,26 @@ class Server(ServerBase):
         self._connected.wait()
         if self._reconnect:
             while not self._stop_reconnect():
-                while not self._stop_receive():
-                    error = receive_msg(
-                        self._buffer,
-                        self._received,
-                        self.msg_end,
-                        self._logger,
-                        self.__class__.__name__
-                    )
-                    if error:
-                        break
+                receive_and_enqueue(
+                    buffer=self._buffer,
+                    msg_end=self.msg_end,
+                    msg_queue=self.received,
+                    stop=self._stop_receive,
+                    timeout=self._timeout,
+                    logger=self._logger,
+                    name=self.__class__.__name__
+                )
                 self._connected.wait()
         else:
-            while not self._stop_receive():
-                error = receive_msg(
-                    self._buffer,
-                    self._received,
-                    self.msg_end,
-                    self._logger,
-                    self.__class__.__name__
-                )
-                if error:
-                    break
+            receive_and_enqueue(
+                buffer=self._buffer,
+                msg_end=self.msg_end,
+                msg_queue=self.received,
+                stop=self._stop_receive,
+                timeout=self._timeout,
+                logger=self._logger,
+                name=self.__class__.__name__
+            )
 
     def accept_connection(self) -> None:
         super().accept_connection()

@@ -7,7 +7,7 @@ from typing import Callable, Optional
 
 from socketlib.basic.buffer import Buffer
 from socketlib.basic.send import get_and_send_messages
-from socketlib.basic.receive import receive_msg
+from socketlib.basic.receive import receive_and_enqueue
 
 
 class ClientBase:
@@ -162,28 +162,26 @@ class ClientReceiver(ClientBase):
         self._wait_for_connection.wait()
         if self._reconnect:
             while not self._stop_reconnect():
-                while not self._stop():
-                    error = receive_msg(
-                        self._buffer,
-                        self._received,
-                        self.msg_end,
-                        self._logger,
-                        self.__class__.__name__
-                    )
-                    if error:
-                        break
+                receive_and_enqueue(
+                    buffer=self._buffer,
+                    msg_end=self.msg_end,
+                    msg_queue=self.received,
+                    stop=self._stop,
+                    timeout=self._timeout,
+                    logger=self._logger,
+                    name=self.__class__.__name__
+                )
                 self._connect_to_server(self._connect_timeout)
         else:
-            while not self._stop():
-                error = receive_msg(
-                    self._buffer,
-                    self._received,
-                    self.msg_end,
-                    self._logger,
-                    self.__class__.__name__
-                )
-                if error:
-                    break
+            receive_and_enqueue(
+                buffer=self._buffer,
+                msg_end=self.msg_end,
+                msg_queue=self.received,
+                stop=self._stop,
+                timeout=self._timeout,
+                logger=self._logger,
+                name=self.__class__.__name__
+            )
 
 
 class ClientSender(ClientBase):
@@ -323,29 +321,26 @@ class Client(ClientBase):
         self._wait_for_connection.wait()
         if self._reconnect:
             while not self._stop_reconnect():
-                while not self._stop_receive():
-                    error = receive_msg(
-                        self._buffer,
-                        self._received,
-                        self.msg_end,
-                        self._logger,
-                        self.__class__.__name__
-                    )
-                    if error:
-                        self._wait_for_connection.clear()
-                        break
+                receive_and_enqueue(
+                    buffer=self._buffer,
+                    msg_end=self.msg_end,
+                    msg_queue=self.received,
+                    stop=self._stop_receive,
+                    timeout=self._timeout,
+                    logger=self._logger,
+                    name=self.__class__.__name__
+                )
                 self._wait_for_connection.wait()
         else:
-            while not self._stop_receive():
-                error = receive_msg(
-                    self._buffer,
-                    self._received,
-                    self.msg_end,
-                    self._logger,
-                    self.__class__.__name__
-                )
-                if error:
-                    break
+            receive_and_enqueue(
+                buffer=self._buffer,
+                msg_end=self.msg_end,
+                msg_queue=self.received,
+                stop=self._stop_receive,
+                timeout=self._timeout,
+                logger=self._logger,
+                name=self.__class__.__name__
+            )
 
     def start(self) -> None:
         """ Start this client in a new thread. """
