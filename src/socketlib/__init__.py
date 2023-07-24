@@ -6,4 +6,4 @@ from .services.abstract_service import AbstractService
 from .server.server import Server, ServerReceiver, ServerSender
 
 
-__version__ = "0.3.0"
+__version__ = "0.3.1"
