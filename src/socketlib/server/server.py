@@ -108,7 +108,7 @@ class ServerBase:
             stop_event: threading.Event
     ) -> Callable[[], bool]:
         if stop is None:
-            return lambda: not stop_event.is_set()
+            return lambda: stop_event.is_set()
         return stop
 
     def __exit__(self, *args):
@@ -248,8 +248,8 @@ class Server(ServerBase):
             to_send: Optional[queue.Queue[str]] = None,
             reconnect: bool = True,
             timeout: Optional[float] = None,
-            stop_receive: Optional[Callable[[], bool]] = lambda: False,
-            stop_send: Optional[Callable[[], bool]] = lambda: False,
+            stop_receive: Optional[Callable[[], bool]] = None,
+            stop_send: Optional[Callable[[], bool]] = None,
             logger: Optional[logging.Logger] = None,
     ):
         super().__init__(address=address, reconnect=reconnect, timeout=timeout, logger=logger)
@@ -257,8 +257,11 @@ class Server(ServerBase):
 
         self._received = received if received is not None else queue.Queue()
         self._to_send = to_send if to_send is not None else queue.Queue()
-        self._stop_receive = stop_receive
-        self._stop_send = stop_send
+
+        self._stop_receive_event = threading.Event()
+        self._stop_send_event = threading.Event()
+        self._stop_receive = self._get_stop_function(stop_receive, self._stop_receive_event)
+        self._stop_send = self._get_stop_function(stop_send, self._stop_send_event)
 
         self._send_thread = threading.Thread(target=self._send, daemon=True)
         self._recv_thread = threading.Thread(target=self._recv, daemon=True)
@@ -350,7 +353,7 @@ class Server(ServerBase):
         self._send_thread.join()
 
     def shutdown(self) -> None:
-        self._stop_send = lambda: True
-        self._stop_receive = lambda: True
-        self._stop_reconnect = lambda: True
+        self._stop_receive_event.set()
+        self._stop_send_event.set()
+        self._stop_reconnect_event.set()
         self.join()

@@ -184,7 +184,8 @@ def parse_args():
         "-o",
         type=float,
         default=5,
-        help="Timeout for socket receive and send operations."
+        help="Timeout in seconds for socket receive and send operations."
+             " (default (5 seconds)"
     )
     parser.add_argument(
         "--messages",

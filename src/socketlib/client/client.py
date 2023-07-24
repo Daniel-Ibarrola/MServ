@@ -106,7 +106,7 @@ class ClientBase:
             stop_event: threading.Event
     ) -> Callable[[], bool]:
         if stop is None:
-            return lambda: not stop_event.is_set()
+            return lambda: stop_event.is_set()
         return stop
 
     def start(self) -> None:
@@ -374,6 +374,7 @@ class Client(ClientBase):
     def shutdown(self) -> None:
         self._stop_receive_event.set()
         self._stop_send_event.set()
+        self._stop_reconnect_event.set()
         self.join()
 
 

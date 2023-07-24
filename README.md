@@ -113,5 +113,5 @@ pip install -e .
 
 ## License
 
-`socketlib` was created by Daniel Ibarrola. It is licensed under the terms
+`pysocklib` was created by Daniel Ibarrola. It is licensed under the terms
 of the MIT license.

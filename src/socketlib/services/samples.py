@@ -9,18 +9,19 @@ from socketlib.basic.queues import get_from_queue
 
 class MessageLogger(AbstractService):
 
-    def __init__(self, messages: queue.Queue[str], logger: logging.Logger):
+    def __init__(self, messages: queue.Queue[bytes], logger: logging.Logger):
         super().__init__(in_queue=messages, logger=logger)
 
     @property
-    def messages(self) -> queue.Queue[str]:
+    def messages(self) -> queue.Queue[bytes]:
         return self._in
 
     def _handle_message(self):
         while not self._stop():
             msg = get_from_queue(self.messages, 2)
             if msg is not None:
-                self._logger.info(f"New message {msg}")
+                msg_str = msg.decode()
+                self._logger.info(msg_str)
 
 
 class MessageGenerator(AbstractService):

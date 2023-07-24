@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.3.1
+
+Fixed clients and servers getting blocked when trying to shut them down due
+to being stuck trying to get messages from a queue.
+
 ## v0.3.0 (19/07/2022)
 
 Continuous integration and deployment with GitHub actions.

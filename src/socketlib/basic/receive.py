@@ -52,8 +52,10 @@ def receive_and_enqueue(
     while not stop():
         msg = get_msg(buffer, msg_end)
         if msg is not None:
-            error = put_in_queue(msg, msg_queue, timeout)
-            if error and logger:
+            success = put_in_queue(msg, msg_queue, timeout)
+            if not success and logger:
                 logger.info(f"{name} failed to enqueue message")
-        elif logger:
-            logger.info(f"{name} failed to receive message")
+        else:
+            if logger:
+                logger.info(f"{name} failed to receive message")
+            break
