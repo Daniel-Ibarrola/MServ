@@ -2,18 +2,25 @@ import logging
 import queue
 import time
 from typing import Callable, Optional
+
 from socketlib.services.abstract_service import AbstractService
+from socketlib.basic.queues import get_from_queue
 
 
 class MessageLogger(AbstractService):
 
-    def __init__(self, messages: queue.Queue, logger: logging.Logger):
+    def __init__(self, messages: queue.Queue[str], logger: logging.Logger):
         super().__init__(in_queue=messages, logger=logger)
+
+    @property
+    def messages(self) -> queue.Queue[str]:
+        return self._in
 
     def _handle_message(self):
         while not self._stop():
-            msg = self._in.get()
-            self._logger.info(f"New message {msg}")
+            msg = get_from_queue(self.messages, 2)
+            if msg is not None:
+                self._logger.info(f"New message {msg}")
 
 
 class MessageGenerator(AbstractService):

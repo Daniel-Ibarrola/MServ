@@ -71,13 +71,3 @@ class AbstractService(abc.ABC):
         self.join()
         if self._logger is not None:
             self._logger.debug(f"Shutting down {self.__class__.__name__}")
-
-    @staticmethod
-    def _get_from_queue(data_queue: queue, timeout: float) -> Optional[Any]:
-        """ Get an item from the queue. If timeout expires and there is
-            nothing in the queue returns None.
-        """
-        try:
-            return data_queue.get(timeout=timeout)
-        except queue.Empty:
-            pass

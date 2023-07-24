@@ -1,4 +1,5 @@
 import queue
+import pytest
 from socketlib import (
     Client,
     ClientReceiver,
@@ -11,6 +12,7 @@ from socketlib import (
 
 class TestClientReceiverAndServerSender:
 
+    @pytest.mark.timeout(3)
     def test_client_receives_and_server_sends(self):
         address = ("localhost", 12345)
         received = queue.Queue()
@@ -47,6 +49,7 @@ class TestClientReceiverAndServerSender:
 
 class TestClientSenderAndServerReceiver:
 
+    @pytest.mark.timeout(3)
     def test_client_sends_and_server_receives(self):
         address = ("localhost", 12345)
         received = queue.Queue()
@@ -83,6 +86,7 @@ class TestClientSenderAndServerReceiver:
 
 class TestClientAndServer:
 
+    # @pytest.mark.timeout(3)
     def test_client_and_server_send_and_receive(self):
         address = ("localhost", 12345)
 

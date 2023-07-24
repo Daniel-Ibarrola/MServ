@@ -6,7 +6,7 @@ from typing import Callable, Optional
 
 from socketlib.basic.buffer import Buffer
 from socketlib.basic.receive import receive_msg
-from socketlib.basic.send import send_msg
+from socketlib.basic.send import get_and_send_messages
 
 
 class ServerBase:
@@ -37,6 +37,8 @@ class ServerBase:
         self._run_thread = threading.Thread()
 
         self._timeout = timeout  # Timeout for send and receive
+
+        self.msg_end = b"\r\n"
 
     @property
     def ip(self) -> str:
@@ -79,6 +81,24 @@ class ServerBase:
         self.listen()
         self._run_thread.start()
 
+    # def _get_and_send_messages(
+    #         self,
+    #         msg_queue: queue.Queue[str],
+    #         stop: Callable[[], bool]
+    # ) -> None:
+    #     while not stop():
+    #         msg = get_from_queue(msg_queue, timeout=self._timeout)
+    #         if msg is not None:
+    #             error = send_msg(
+    #                 self._connection,
+    #                 msg,
+    #                 self.msg_end,
+    #                 self._logger,
+    #                 self.__class__.__name__
+    #             )
+    #             if error:
+    #                 break
+
     def join(self) -> None:
         self._run_thread.join()
 
@@ -118,7 +138,6 @@ class ServerReceiver(ServerBase):
             timeout=timeout,
             stop=stop,
             logger=logger)
-        self.msg_end = b"\r\n"
         self._buffer = None  # type: Optional[Buffer]
         self._received = received if received is not None else queue.Queue()
         self._run_thread = threading.Thread(
@@ -202,29 +221,27 @@ class ServerSender(ServerBase):
         if self._reconnect:
             while not self._stop_reconnect():
                 self.accept_connection()
-                while not self._stop():
-                    error = send_msg(
-                        self._connection,
-                        self._to_send,
-                        self.msg_end,
-                        self._logger,
-                        self.__class__.__name__
-                    )
-                    if error:
-                        break
+                get_and_send_messages(
+                    sock=self._connection,
+                    msg_end=self.msg_end,
+                    msg_queue=self.to_send,
+                    stop=self._stop,
+                    timeout=self._timeout,
+                    logger=self._logger,
+                    name=self.__class__.__name__
+                )
                 self.listen()
         else:
             self.accept_connection()
-            while not self._stop():
-                error = send_msg(
-                    self._connection,
-                    self._to_send,
-                    self.msg_end,
-                    self._logger,
-                    self.__class__.__name__
-                )
-                if error:
-                    break
+            get_and_send_messages(
+                sock=self._connection,
+                msg_end=self.msg_end,
+                msg_queue=self.to_send,
+                stop=self._stop,
+                timeout=self._timeout,
+                logger=self._logger,
+                name=self.__class__.__name__
+            )
 
 
 class Server(ServerBase):
@@ -243,7 +260,6 @@ class Server(ServerBase):
             logger: Optional[logging.Logger] = None,
     ):
         super().__init__(address=address, reconnect=reconnect, timeout=timeout, logger=logger)
-        self.msg_end = b"\r\n"
         self._buffer = None  # type: Optional[Buffer]
 
         self._received = received if received is not None else queue.Queue()
@@ -275,30 +291,28 @@ class Server(ServerBase):
         self._connected.wait()
         if self._reconnect:
             while not self._stop_reconnect():
-                while not self._stop_send():
-                    error = send_msg(
-                        self._connection,
-                        self._to_send,
-                        self.msg_end,
-                        self._logger,
-                        self.__class__.__name__
-                    )
-                    if error:
-                        break
+                get_and_send_messages(
+                    sock=self._connection,
+                    msg_end=self.msg_end,
+                    msg_queue=self.to_send,
+                    stop=self._stop_send,
+                    timeout=self._timeout,
+                    logger=self._logger,
+                    name=self.__class__.__name__
+                )
                 self._connected.clear()
                 self.listen()
                 self.accept_connection()
         else:
-            while not self._stop_send():
-                error = send_msg(
-                    self._connection,
-                    self._to_send,
-                    self.msg_end,
-                    self._logger,
-                    self.__class__.__name__
-                )
-                if error:
-                    break
+            get_and_send_messages(
+                sock=self._connection,
+                msg_end=self.msg_end,
+                msg_queue=self.to_send,
+                stop=self._stop_send,
+                timeout=self._timeout,
+                logger=self._logger,
+                name=self.__class__.__name__
+            )
 
     def _recv(self):
         self._connected.wait()

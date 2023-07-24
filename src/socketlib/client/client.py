@@ -6,7 +6,7 @@ import time
 from typing import Callable, Optional
 
 from socketlib.basic.buffer import Buffer
-from socketlib.basic.send import send_msg
+from socketlib.basic.send import get_and_send_messages
 from socketlib.basic.receive import receive_msg
 
 
@@ -39,6 +39,8 @@ class ClientBase:
         self._connect_timeout = None
 
         self._timeout = timeout  # Timeout for send and receive
+
+        self.msg_end = b"\r\n"
 
     @property
     def ip(self) -> str:
@@ -134,7 +136,6 @@ class ClientReceiver(ClientBase):
             timeout=timeout,
             stop=stop,
             logger=logger)
-        self.msg_end = b"\r\n"
         self._buffer = None  # type: Optional[Buffer]
         self._received = received if received is not None else queue.Queue()
         self._run_thread = threading.Thread(target=self._recv, daemon=True)
@@ -203,7 +204,6 @@ class ClientSender(ClientBase):
             timeout=timeout,
             stop=stop,
             logger=logger)
-        self.msg_end = b"\r\n"
         self._to_send = to_send if to_send is not None else queue.Queue()
         self._run_thread = threading.Thread(target=self._send, daemon=True)
 
@@ -215,28 +215,26 @@ class ClientSender(ClientBase):
         self._wait_for_connection.wait()
         if self._reconnect:
             while not self._stop_reconnect():
-                while not self._stop():
-                    error = send_msg(
-                        self._socket,
-                        self._to_send,
-                        self.msg_end,
-                        self._logger,
-                        self.__class__.__name__
-                    )
-                    if error:
-                        break
+                get_and_send_messages(
+                    sock=self._socket,
+                    msg_end=self.msg_end,
+                    msg_queue=self.to_send,
+                    stop=self._stop,
+                    timeout=self._timeout,
+                    logger=self._logger,
+                    name=self.__class__.__name__
+                )
                 self._connect_to_server(self._connect_timeout)
         else:
-            while not self._stop():
-                error = send_msg(
-                    self._socket,
-                    self._to_send,
-                    self.msg_end,
-                    self._logger,
-                    self.__class__.__name__
-                )
-                if error:
-                    break
+            get_and_send_messages(
+                sock=self._socket,
+                msg_end=self.msg_end,
+                msg_queue=self.to_send,
+                stop=self._stop,
+                timeout=self._timeout,
+                logger=self._logger,
+                name=self.__class__.__name__
+            )
 
     def start_main_thread(self) -> None:
         """ Start this client in the main thread"""
@@ -299,29 +297,27 @@ class Client(ClientBase):
         self._wait_for_connection.wait()
         if self._reconnect:
             while not self._stop_reconnect():
-                while not self._stop_send():
-                    error = send_msg(
-                        self._socket,
-                        self._to_send,
-                        self.msg_end,
-                        self._logger,
-                        self.__class__.__name__
-                    )
-                    if error:
-                        break
+                get_and_send_messages(
+                    sock=self._socket,
+                    msg_end=self.msg_end,
+                    msg_queue=self.to_send,
+                    stop=self._stop_send,
+                    timeout=self._timeout,
+                    logger=self._logger,
+                    name=self.__class__.__name__
+                )
                 self._wait_for_connection.clear()
                 self._connect_to_server(self._connect_timeout)
         else:
-            while not self._stop_send():
-                error = send_msg(
-                    self._socket,
-                    self._to_send,
-                    self.msg_end,
-                    self._logger,
-                    self.__class__.__name__
-                )
-                if error:
-                    break
+            get_and_send_messages(
+                sock=self._socket,
+                msg_end=self.msg_end,
+                msg_queue=self.to_send,
+                stop=self._stop_send,
+                timeout=self._timeout,
+                logger=self._logger,
+                name=self.__class__.__name__
+            )
 
     def _recv(self) -> None:
         self._wait_for_connection.wait()
