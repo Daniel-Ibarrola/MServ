@@ -20,16 +20,20 @@ class ServerBase:
             address: tuple[str, int],
             reconnect: bool = True,
             timeout: Optional[float] = None,
-            stop: Optional[Callable[[], bool]] = lambda: False,
-            stop_reconnect: Optional[Callable[[], bool]] = lambda: False,
+            stop: Optional[Callable[[], bool]] = None,
+            stop_reconnect: Optional[Callable[[], bool]] = None,
             logger: Optional[logging.Logger] = None,
     ):
         self._address = address
         self._socket = None  # type: Optional[socket.socket]
         self._connection = None  # The client connection
         self._conn_details = None
-        self._stop = stop
-        self._stop_reconnect = stop_reconnect
+
+        self._stop_event = threading.Event()
+        self._stop_reconnect_event = threading.Event()
+        self._stop = self._get_stop_function(stop, self._stop_event)
+        self._stop_reconnect = self._get_stop_function(
+            stop_reconnect, self._stop_reconnect_event)
 
         self._reconnect = reconnect
         self._logger = logger
@@ -85,8 +89,8 @@ class ServerBase:
         self._run_thread.join()
 
     def shutdown(self) -> None:
-        self._stop = lambda: True
-        self._stop_reconnect = lambda: True
+        self._stop_event.set()
+        self._stop_reconnect_event.set()
         self.join()
 
     def __enter__(self):
@@ -97,6 +101,15 @@ class ServerBase:
             self._connection.close()
         if self._socket is not None:
             self._socket.close()
+
+    @staticmethod
+    def _get_stop_function(
+            stop: Optional[Callable[[], bool]],
+            stop_event: threading.Event
+    ) -> Callable[[], bool]:
+        if stop is None:
+            return lambda: not stop_event.is_set()
+        return stop
 
     def __exit__(self, *args):
         self.close_connection()
@@ -111,7 +124,7 @@ class ServerReceiver(ServerBase):
             received: Optional[queue.Queue[bytes]] = None,
             reconnect: bool = True,
             timeout: Optional[float] = None,
-            stop: Optional[Callable[[], bool]] = lambda: False,
+            stop: Optional[Callable[[], bool]] = None,
             logger: Optional[logging.Logger] = None,
     ):
         super().__init__(
@@ -174,7 +187,7 @@ class ServerSender(ServerBase):
             to_send: Optional[queue.Queue[str]] = None,
             reconnect: bool = True,
             timeout: Optional[float] = None,
-            stop: Optional[Callable[[], bool]] = lambda: False,
+            stop: Optional[Callable[[], bool]] = None,
             logger: Optional[logging.Logger] = None,
     ):
         super().__init__(

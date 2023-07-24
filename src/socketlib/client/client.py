@@ -21,15 +21,20 @@ class ClientBase:
             address: tuple[str, int],
             reconnect: bool = True,
             timeout: Optional[float] = None,
-            stop: Optional[Callable[[], bool]] = lambda: False,
-            stop_reconnect: Optional[Callable[[], bool]] = lambda: False,
+            stop: Optional[Callable[[], bool]] = None,
+            stop_reconnect: Optional[Callable[[], bool]] = None,
             logger: Optional[logging.Logger] = None,
     ):
         self._address = address
         self._socket = None  # type: Optional[socket.socket]
         self._reconnect = reconnect
-        self._stop = stop
-        self._stop_reconnect = stop_reconnect
+
+        self._stop_event = threading.Event()
+        self._stop_reconnect_event = threading.Event()
+        self._stop = self._get_stop_function(stop, self._stop_event)
+        self._stop_reconnect = self._get_stop_function(
+            stop_reconnect, self._stop_reconnect_event)
+
         self._logger = logger
 
         self._run_thread = threading.Thread()
@@ -55,8 +60,8 @@ class ClientBase:
         return self._run_thread
 
     def connect(self, timeout: Optional[float] = None) -> None:
-        """ Connect to the server. This will attempt to connect to the server indefinitively
-            unless a timeout is give.
+        """ Connect to the server. This will attempt to connect to the server indefinitely
+            unless a timeout is given.
 
         """
         self._connect_timeout = timeout
@@ -95,6 +100,15 @@ class ClientBase:
 
         self._wait_for_connection.set()
 
+    @staticmethod
+    def _get_stop_function(
+            stop: Optional[Callable[[], bool]],
+            stop_event: threading.Event
+    ) -> Callable[[], bool]:
+        if stop is None:
+            return lambda: not stop_event.is_set()
+        return stop
+
     def start(self) -> None:
         """ Start this client in a new thread. """
         self._run_thread.start()
@@ -103,8 +117,11 @@ class ClientBase:
         self._run_thread.join()
 
     def shutdown(self) -> None:
-        self._stop = lambda: True
-        self._stop_reconnect = lambda: True
+        """ Stop this client. If a custom stop function is used
+            this will not have any effect.
+        """
+        self._stop_event.set()
+        self._stop_reconnect_event.set()
         self.join()
 
     def close_connection(self) -> None:
@@ -127,7 +144,7 @@ class ClientReceiver(ClientBase):
             received: Optional[queue.Queue[bytes]] = None,
             reconnect: bool = True,
             timeout: Optional[float] = None,
-            stop: Optional[Callable[[], bool]] = lambda: False,
+            stop: Optional[Callable[[], bool]] = None,
             logger: Optional[logging.Logger] = None,
     ):
         super().__init__(
@@ -193,7 +210,7 @@ class ClientSender(ClientBase):
             to_send: Optional[queue.Queue[str]] = None,
             reconnect: bool = True,
             timeout: Optional[float] = None,
-            stop: Optional[Callable[[], bool]] = lambda: False,
+            stop: Optional[Callable[[], bool]] = None,
             logger: Optional[logging.Logger] = None,
     ):
         super().__init__(
@@ -250,8 +267,8 @@ class Client(ClientBase):
             to_send: Optional[queue.Queue[str]] = None,
             reconnect: bool = True,
             timeout: Optional[float] = None,
-            stop_receive: Callable[[], bool] = lambda: False,
-            stop_send: Callable[[], bool] = lambda: False,
+            stop_receive: Callable[[], bool] = None,
+            stop_send: Callable[[], bool] = None,
             logger: Optional[logging.Logger] = None,
     ):
         super().__init__(address=address, reconnect=reconnect, timeout=timeout, logger=logger)
@@ -260,8 +277,11 @@ class Client(ClientBase):
 
         self._received = received if received is not None else queue.Queue()
         self._to_send = to_send if to_send is not None else queue.Queue()
-        self._stop_receive = stop_receive
-        self._stop_send = stop_send
+
+        self._stop_receive_event = threading.Event()
+        self._stop_send_event = threading.Event()
+        self._stop_receive = self._get_stop_function(stop_receive, self._stop_receive_event)
+        self._stop_send = self._get_stop_function(stop_send, self._stop_send_event)
 
         self._send_thread = threading.Thread(target=self._send, daemon=True)
         self._recv_thread = threading.Thread(target=self._recv, daemon=True)
@@ -352,8 +372,8 @@ class Client(ClientBase):
         self._send_thread.join()
 
     def shutdown(self) -> None:
-        self._stop_send = lambda: True
-        self._stop_receive = lambda: True
+        self._stop_receive_event.set()
+        self._stop_send_event.set()
         self.join()
 
 

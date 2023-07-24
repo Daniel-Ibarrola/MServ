@@ -86,7 +86,7 @@ class TestClientSenderAndServerReceiver:
 
 class TestClientAndServer:
 
-    # @pytest.mark.timeout(3)
+    @pytest.mark.timeout(3)
     def test_client_and_server_send_and_receive(self):
         address = ("localhost", 12345)
 

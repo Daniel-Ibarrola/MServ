@@ -55,5 +55,5 @@ def receive_and_enqueue(
             error = put_in_queue(msg, msg_queue, timeout)
             if error and logger:
                 logger.info(f"{name} failed to enqueue message")
-        else:
+        elif logger:
             logger.info(f"{name} failed to receive message")
