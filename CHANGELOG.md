@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.3.2
+Can pass None to AbstractService class stop parameter. AbstractService
+uses threading event to stop.
+
 ## v0.3.1
 
 Fixed clients and servers getting blocked when trying to shut them down due

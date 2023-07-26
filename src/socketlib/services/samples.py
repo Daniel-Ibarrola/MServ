@@ -49,7 +49,7 @@ class ToUpper(AbstractService):
             self,
             msg_in: Optional[queue.Queue[str]] = None,
             msg_out: Optional[queue.Queue[str]] = None,
-            stop: Optional[Callable[[], bool]] = lambda: False,
+            stop: Optional[Callable[[], bool]] = None,
     ):
         super().__init__(msg_in, msg_out, stop)
 
