@@ -82,7 +82,7 @@ class ClientBase:
                     self._socket.settimeout(self._timeout)
                 error = False
                 break
-            except ConnectionError:
+            except (ConnectionError, socket.gaierror):
                 error = True
                 time.sleep(1)
 

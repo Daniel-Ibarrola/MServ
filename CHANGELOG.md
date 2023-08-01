@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.3.3
+Handle error when client tries to connect to a domain that can not be resolved
+
 ## v0.3.2
 Can pass None to AbstractService class stop parameter. AbstractService
 uses threading event to stop.
