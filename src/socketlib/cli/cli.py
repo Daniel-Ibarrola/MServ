@@ -36,6 +36,11 @@ def start_socket(
     msg_gen = None
     name = "Client" if client else "Server"
 
+    if name == "Client":
+        logger.info(f"{name} will connect to {address}")
+    else:
+        logger.info(f"{name} will listen for connections in {address}")
+
     if sock_type == "multi":
         if client:
             socket = Client(
