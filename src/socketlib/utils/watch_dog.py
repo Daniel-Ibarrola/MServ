@@ -24,10 +24,12 @@ class WatchDog:
         self._logger = logger
 
     def check_threads(self):
+        # TODO: remove exit flag. Exit with return
         exit_ = False
         while not self._stop:
             for thread_name, thread in self.threads.items():
                 if not thread.is_alive():
+                    # TODO: should check only after all threads have started
                     if self._logger is not None:
                         self._logger.info(f"Thread {thread_name} is dead")
                     exit_ = True
