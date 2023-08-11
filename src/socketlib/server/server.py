@@ -160,6 +160,7 @@ class ServerReceiver(ServerBase):
                     logger=self._logger,
                     name=self.__class__.__name__
                 )
+                self.close_connection()
                 self.listen()
         else:
             self.accept_connection()
@@ -223,6 +224,7 @@ class ServerSender(ServerBase):
                     logger=self._logger,
                     name=self.__class__.__name__
                 )
+                self.close_connection()
                 self.listen()
         else:
             self.accept_connection()
@@ -297,6 +299,7 @@ class Server(ServerBase):
                     name=self.__class__.__name__
                 )
                 self._connected.clear()
+                self.close_connection()
                 self.listen()
                 self.accept_connection()
         else:

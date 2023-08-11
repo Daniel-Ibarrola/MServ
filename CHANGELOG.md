@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.3.4
+Fixed address already in use error when reconnecting a ServerReceiver or a ServerSender.
+
 ## v0.3.3
 Handle error when client tries to connect to a domain that can not be resolved
 
