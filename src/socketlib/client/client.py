@@ -46,6 +46,7 @@ class ClientBase:
         self._timeout = timeout  # Timeout for send and receive
 
         self.msg_end = b"\r\n"
+        self.encoding = "utf-8"
 
     @property
     def ip(self) -> str:
@@ -237,7 +238,8 @@ class ClientSender(ClientBase):
                     stop=self._stop,
                     timeout=self._timeout,
                     logger=self._logger,
-                    name=self.__class__.__name__
+                    name=self.__class__.__name__,
+                    encoding=self.encoding
                 )
                 self._connect_to_server(self._connect_timeout)
         else:
@@ -248,7 +250,8 @@ class ClientSender(ClientBase):
                 stop=self._stop,
                 timeout=self._timeout,
                 logger=self._logger,
-                name=self.__class__.__name__
+                name=self.__class__.__name__,
+                encoding=self.encoding
             )
 
     def start_main_thread(self) -> None:

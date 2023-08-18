@@ -28,8 +28,6 @@ def receive_msg(
     """
     data = get_msg(buffer, msg_end)
     if data is not None:
-        # handle_message_received(data)
-        # TODO: add timeout to put
         msg_queue.put(data)
     else:
         if logger:

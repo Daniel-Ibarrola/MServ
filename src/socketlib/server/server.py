@@ -43,6 +43,7 @@ class ServerBase:
         self._timeout = timeout  # Timeout for send and receive
 
         self.msg_end = b"\r\n"
+        self.encoding = "utf-8"
 
     @property
     def ip(self) -> str:
@@ -161,6 +162,7 @@ class ServerReceiver(ServerBase):
                     name=self.__class__.__name__
                 )
                 self.close_connection()
+                # TODO: in some cases listen can raise and address already in use error
                 self.listen()
         else:
             self.accept_connection()
@@ -222,7 +224,8 @@ class ServerSender(ServerBase):
                     stop=self._stop,
                     timeout=self._timeout,
                     logger=self._logger,
-                    name=self.__class__.__name__
+                    name=self.__class__.__name__,
+                    encoding=self.encoding
                 )
                 self.close_connection()
                 self.listen()
@@ -235,7 +238,8 @@ class ServerSender(ServerBase):
                 stop=self._stop,
                 timeout=self._timeout,
                 logger=self._logger,
-                name=self.__class__.__name__
+                name=self.__class__.__name__,
+                encoding=self.encoding
             )
 
 
@@ -296,7 +300,8 @@ class Server(ServerBase):
                     stop=self._stop_send,
                     timeout=self._timeout,
                     logger=self._logger,
-                    name=self.__class__.__name__
+                    name=self.__class__.__name__,
+                    encoding=self.encoding
                 )
                 self._connected.clear()
                 self.close_connection()
@@ -310,7 +315,8 @@ class Server(ServerBase):
                 stop=self._stop_send,
                 timeout=self._timeout,
                 logger=self._logger,
-                name=self.__class__.__name__
+                name=self.__class__.__name__,
+                encoding=self.encoding
             )
 
     def _recv(self):

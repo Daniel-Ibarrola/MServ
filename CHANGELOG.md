@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.4.0
+
+Clients and Servers have a new attribute "encoding", which can be used to
+set the encoding of the messages sent. The functions in the `basic.send` module
+also accept a new optional argument encoding.
+
 ## v0.3.4
 Fixed address already in use error when reconnecting a ServerReceiver or a ServerSender.
 
