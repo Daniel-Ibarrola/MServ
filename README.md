@@ -1,4 +1,4 @@
-# SocketLib
+# PySockLib
 
 Helper library to implement socket client and servers as well as services to process, store, or 
 send data received or send trough sockets.
@@ -18,26 +18,288 @@ Install the latest version:
 pip install pysocklib
 ```
 
-## Contents
+## Python module
 
-### Client and Servers
-This package includes different socket clients and servers. The following classes are included:
+The python module contains several classes to easily implement client and/or server
+programs. All available classes are listed below.
 
-- **ClientReceiver**: A client that receives messages from a server 
-- **ClientSender**: A client that sends data to a server
-- **Client**: A client that receives and sends data simultaneously to a server  
+### ServerReceiver
 
-- **ServerReceiver**: A server that receives messages from a client 
-- **ServerSender**: A server that sends data to a client
-- **Server**: A server that receives and sends data simultaneously to a client.
+A server that receives messages from a single client.
+
+#### Constructor
+
+```python
+def __init__(
+    self,
+    address: tuple[str, int],
+    received: Optional[queue.Queue[bytes]] = None,
+    reconnect: bool = True,
+    timeout: Optional[float] = None,
+    stop: Optional[Callable[[], bool]] = None,
+    logger: Optional[logging.Logger] = None,
+)
+```
+
+- `address`: A tuple representing the IP address and port number to bind the server to.
+- `received`: Optional queue to store received messages.
+- `reconnect`: If True, the server will attempt to reconnect after disconnection.
+- `timeout`: Optional timeout value for send and receive operations.
+- `stop`: A function that returns True to signal the server to stop.
+- `logger`: Optional logger for logging server events.
+
+#### Properties
+- `ip`: The IP address component of the server's address.
+- `port`: The port number component of the server's address.
+- `received`: The queue containing received messages.
+
+#### Methods
+- `listen()`: Creates the socket and puts it in listen mode.
+- `accept_connection()`: Accepts a new connection.
+- `start()`: Starts the server in a new thread.
+- `join()`: Waits for the server thread to finish.
+- `shutdown()`: Signals the server to shut down gracefully.
+- `close_connection()`: Closes the client connection and the socket.
+- `__enter__()`: Context manager entry point.
+- `__exit__(...)`: Context manager exit point. Closes all sockets
+
+### ServerSender
+
+#### Constructor
+
+```python
+def __init__(
+    self,
+    address: tuple[str, int],
+    to_send: Optional[queue.Queue[str]] = None,
+    reconnect: bool = True,
+    timeout: Optional[float] = None,
+    stop: Optional[Callable[[], bool]] = None,
+    logger: Optional[logging.Logger] = None,
+)
+```
+
+- `address`: A tuple representing the IP address and port number to bind the server to.
+- `to_send`: Optional queue to store messages that will be sent.
+- `reconnect`: If True, the server will attempt to reconnect after disconnection.
+- `timeout`: Optional timeout value for send and receive operations.
+- `stop`: A function that returns True to signal the server to stop.
+- `logger`: Optional logger for logging server events.
+
+#### Properties
+- `ip`: The IP address component of the server's address.
+- `port`: The port number component of the server's address.
+- `to_send`: The queue containing messages to be sent.
+
+#### Methods
+- `listen()`: Creates the socket and puts it in listen mode.
+- `accept_connection()`: Accepts a new connection.
+- `start()`: Starts the server in a new thread.
+- `join()`: Waits for the server thread to finish.
+- `shutdown()`: Signals the server to shut down gracefully.
+- `close_connection()`: Closes the client connection and the socket.
+- `__enter__()`: Context manager entry point.
+- `__exit__(...)`: Context manager exit point. Closes all sockets
+
+### Server
+
+A server that sends and receives messages to and from a single client.
+This server runs in two threads, one to send messages and another to receive messages.
+
+```Python
+def __init__(
+    self,
+    address: tuple[str, int],
+    received: Optional[queue.Queue[bytes]] = None,
+    to_send: Optional[queue.Queue[str]] = None,
+    reconnect: bool = True,
+    timeout: Optional[float] = None,
+    stop_receive: Optional[Callable[[], bool]] = None,
+    stop_send: Optional[Callable[[], bool]] = None,
+    logger: Optional[logging.Logger] = None,
+)
+
+```
+
+- `address`: A tuple representing the IP address and port number to bind the server to.
+- `received`: Optional queue to store received messages.
+- `to_send`: Optional queue containing messages to be sent.
+- `reconnect`: If True, the server will attempt to reconnect after disconnection.
+- `timeout`: Optional timeout value for send and receive operations.
+- `stop_receive`:  A function that returns True to signal the receiving loop to stop.
+- `stop_send`:  A function that returns True to signal the sending loop to stop.
+- `logger`: Optional logger for logging server events.
+
+#### Properties
+- `received`: The queue containing received messages.
+- `to_send`: The queue containing messages to be sent.
+- `send_thread`: The thread responsible for sending messages.
+- `receive_thread`: The thread responsible for receiving messages.
+
+#### Methods
+- `listen()`: Creates the socket and puts it in listen mode.
+- `accept_connection()`: Accepts a new connection.
+- `start()`: Starts the server in a new thread.
+- `join()`: Waits for both the sending and receiving threads to stop.
+- `shutdown()`: Signals the server to shut down gracefully.
+- `close_connection()`: Closes the client connection and the socket.
+- `__enter__()`: Context manager entry point.
+- `__exit__(...)`: Context manager exit point. Closes all sockets
+
+### ClientReceiver
+
+A client that receives messages from a server.
+
+#### Constructor
+
+```python
+def __init__(
+    self,
+    address: tuple[str, int],
+    received: Optional[queue.Queue[bytes]] = None,
+    reconnect: bool = True,
+    timeout: Optional[float] = None,
+    stop: Optional[Callable[[], bool]] = None,
+    logger: Optional[logging.Logger] = None,
+)
+```
+
+- `address`: A tuple representing the IP address and port number to connect to.
+- `received`: Optional queue to store received messages.
+- `reconnect`: If True, the client will attempt to reconnect after disconnection.
+- `timeout`: Optional timeout value for send and receive operations.
+- `stop`: A function that returns True to signal the client to stop.
+- `logger`: Optional logger for logging client events.
+
+#### Properties
+
+- `ip`: The IP address component of the client's address.
+- `port`: The port number component of the client's address.
+- `received`: The queue containing received messages.
+
+#### Methods
+- `connect(timeout: Optional[float] = None)`: Connects to the server with an optional timeout.
+- `start()`: Starts the client in a new thread.
+- `join()`: Waits for the client thread to finish.
+- `shutdown()`: Signals the client to shut down gracefully.
+- `close_connection()`: Closes the socket connection.
+- `__enter__()`: Context manager entry point.
+- `__exit__(...)`: Context manager exit point.
+
+### ClientSender
+
+```python
+def __init__(
+    self,
+    address: tuple[str, int],
+    to_send: Optional[queue.Queue[bytes]] = None,
+    reconnect: bool = True,
+    timeout: Optional[float] = None,
+    stop: Optional[Callable[[], bool]] = None,
+    logger: Optional[logging.Logger] = None,
+)
+```
+
+- `address`: A tuple representing the IP address and port number to connect to.
+- `to_send`: Optional queue to store messages to be sent.
+- `reconnect`: If True, the client will attempt to reconnect after disconnection.
+- `timeout`: Optional timeout value for send and receive operations.
+- `stop`: A function that returns True to signal the client to stop.
+- `logger`: Optional logger for logging client events.
+
+#### Properties
+
+- `ip`: The IP address component of the client's address.
+- `port`: The port number component of the client's address.
+- `to_send`: The queue containing messages to be sent.
+
+#### Methods
+- `connect(timeout: Optional[float] = None)`: Connects to the server with an optional timeout.
+- `start()`: Starts the client in a new thread.
+- `join()`: Waits for the client thread to finish.
+- `shutdown()`: Signals the client to shut down gracefully.
+- `close_connection()`: Closes the socket connection.
+- `__enter__()`: Context manager entry point.
+- `__exit__(...)`: Context manager exit point.
+
+### Client
+
+A client that sends and receives messages to and from a server.
+
+```python
+def __init__(
+    self,
+    address: tuple[str, int],
+    received: Optional[queue.Queue[bytes]] = None,
+    to_send: Optional[queue.Queue[str]] = None,
+    reconnect: bool = True,
+    timeout: Optional[float] = None,
+    stop_receive: Callable[[], bool] = None,
+    stop_send: Callable[[], bool] = None,
+    logger: Optional[logging.Logger] = None,
+)
+```
+- `address`: A tuple representing the IP address and port number to connect to.
+- `received`: Optional queue to store received messages.
+- `to_send`: Optional queue containing messages to be sent.
+- `reconnect`: If True, the client will attempt to reconnect after disconnection.
+- `timeout`: Optional timeout value for send and receive operations.
+- `stop_receive`: A function that returns True to signal the receiving loop to stop.
+- `stop_send`: A function that returns True to signal the sending loop to stop.
+- `logger`: Optional logger for logging client events.
+
+#### Properties
+
+- `ip`: The IP address component of the client's address.
+- `port`: The port number component of the client's address.
+- `received`: The queue containing received messages.
+- `to_send`: The queue containing messages to be sent.
+- `send_thread`: The thread responsible for sending messages.
+- `receive_thread`: The thread responsible for receiving messages.
+
+#### Methods
+- `connect(timeout: Optional[float] = None)`: Connects to the server with an optional timeout.
+- `start()`: Starts the client in a new thread.
+- `join()`: Waits for the client thread to finish.
+- `shutdown()`: Signals the client to shut down gracefully.
+- `close_connection()`: Closes the socket connection.
+- `__enter__()`: Context manager entry point.
+- `__exit__(...)`: Context manager exit point.
 
 
-### Services
+### AbstractService
 
-This module main class is the AbstractService. This abstract base class is a blueprint
-to easily create other services that communicate with each other trough queues. Very useful
+This abstract base class is a blueprint  to easily create other services that communicate with each other trough queues. Very useful
 for processing, storing, etc. the data received trough sockets.
 
+Abstract base class for all services.
+
+To add a new service, implement the `_handle_message` method.
+
+A service consists of an input queue and an output queue. The purpose of a service is to apply some function to the inputs to obtain the outputs that can then be processed by another service or sent to a receptor.
+
+Most services are meant to run indefinitely, and so they do not run in the main thread. However, a custom function to terminate the service when needed can be used, and the service can also run in the main thread if necessary.
+
+#### Constructor
+
+```python
+def __init__(
+            self,
+            in_queue: Optional[queue.Queue] = None,
+            out_queue: Optional[queue.Queue] = None,
+            stop: Optional[Callable[[], bool]] = None,
+            events: Optional[dict[str, threading.Event]] = None,
+            logger: Optional[logging.Logger] = None,
+    ):
+```
+
+#### Parameters:
+
+- `in_queue` (Optional[queue.Queue]): Input queue for receiving messages.
+- `out_queue` (Optional[queue.Queue]): Output queue for sending messages.
+- `stop` (Optional[Callable[[], bool]]): Custom stop function.
+- `events` (Optional[dict[str, threading.Event]]): Dictionary of events.
+- `logger` (Optional[logging.Logger]): Logger for logging events.
 
 ### Examples 
 

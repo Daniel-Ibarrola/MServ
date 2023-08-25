@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.5.0
+
+### Features
+- ClientBase is now an abstract base class and cannot be instantiated.
+- ServerBase is now an abstract base class and cannot be instantiated.
+- Added docstrings.
+
+### Documentation
+- Added documentation for main classes in the readme.
+
 ## v0.4.0
 
 Clients and Servers have a new attribute "encoding", which can be used to

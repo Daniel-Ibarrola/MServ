@@ -1,3 +1,4 @@
+import abc
 import queue
 import logging
 import socket
@@ -9,10 +10,8 @@ from socketlib.basic.receive import receive_and_enqueue
 from socketlib.basic.send import get_and_send_messages
 
 
-class ServerBase:
-    """ Parent class for other server classes that implements some common methods.
-
-        This class should not be instantiated.
+class ServerBase(abc.ABC):
+    """ Abstract base class for other server classes that implements some common methods.
     """
 
     def __init__(
@@ -24,6 +23,15 @@ class ServerBase:
             stop_reconnect: Optional[Callable[[], bool]] = None,
             logger: Optional[logging.Logger] = None,
     ):
+        """ Initialize the base server class.
+
+           :param address: A tuple representing the IP address and port number to bind the server to.
+           :param reconnect: If True, the server will attempt to reconnect after disconnection.
+           :param timeout: Optional timeout value for send and receive operations.
+           :param stop: A function that returns True to signal the server to stop.
+           :param stop_reconnect: A function that returns True to signal the reconnection loop to stop.
+           :param logger: Optional logger for logging server events.
+       """
         self._address = address
         self._socket = None  # type: Optional[socket.socket]
         self._connection = None  # The client connection
@@ -77,17 +85,18 @@ class ServerBase:
                 f"connection accepted from {self._conn_details}"
             )
 
+    @abc.abstractmethod
     def start(self) -> None:
         """ Start this server in a new thread.
 
             If this method is used, there is no need to call the `listen` and `accept_connection`
             as they are called behind the scenes.
         """
-        self.listen()
-        self._run_thread.start()
+        raise NotImplementedError
 
+    @abc.abstractmethod
     def join(self) -> None:
-        self._run_thread.join()
+        raise NotImplementedError
 
     def shutdown(self) -> None:
         self._stop_event.set()
@@ -128,6 +137,14 @@ class ServerReceiver(ServerBase):
             stop: Optional[Callable[[], bool]] = None,
             logger: Optional[logging.Logger] = None,
     ):
+        """ Initialize the server receiver class.
+
+               :param address: A tuple representing the IP address and port number to bind the server to.
+               :param reconnect: If True, the server will attempt to reconnect after disconnection.
+               :param timeout: Optional timeout value for send and receive operations.
+               :param stop: A function that returns True to signal the server to stop.
+               :param logger: Optional logger for logging server events.
+       """
         super().__init__(
             address=address,
             reconnect=reconnect,
@@ -144,9 +161,22 @@ class ServerReceiver(ServerBase):
     def received(self) -> queue.Queue[bytes]:
         return self._received
 
+    @property
+    def receive_thread(self) -> threading.Thread:
+        return self._run_thread
+
     def accept_connection(self) -> None:
         super().accept_connection()
         self._buffer = Buffer(self._connection)
+
+    def start(self) -> None:
+        """ Start the server in a new thread. """
+        self.listen()
+        self.receive_thread.start()
+
+    def join(self) -> None:
+        """ Wait for the server thread to finish."""
+        self.receive_thread.join()
 
     def _recv(self):
         if self._reconnect:
@@ -182,7 +212,8 @@ class ServerReceiver(ServerBase):
 
 
 class ServerSender(ServerBase):
-    """ A server that sends messages to a single client"""
+    """ A server that sends messages to a single client.
+    """
 
     def __init__(
             self,
@@ -193,6 +224,14 @@ class ServerSender(ServerBase):
             stop: Optional[Callable[[], bool]] = None,
             logger: Optional[logging.Logger] = None,
     ):
+        """ Initialize the server receiver class.
+
+           :param address: A tuple representing the IP address and port number to bind the server to.
+           :param reconnect: If True, the server will attempt to reconnect after disconnection.
+           :param timeout: Optional timeout value for send and receive operations.
+           :param stop: A function that returns True to signal the server to stop.
+           :param logger: Optional logger for logging server events.
+       """
         super().__init__(
             address=address,
             reconnect=reconnect,
@@ -208,6 +247,19 @@ class ServerSender(ServerBase):
     @property
     def to_send(self) -> queue.Queue[str]:
         return self._to_send
+
+    @property
+    def send_thread(self) -> threading.Thread:
+        return self._run_thread
+
+    def start(self) -> None:
+        """ Start the server in a new thread. """
+        self.listen()
+        self.send_thread.start()
+
+    def join(self) -> None:
+        """ Wait for the server thread to finish."""
+        self.send_thread.join()
 
     def start_main_thread(self) -> None:
         self.listen()
@@ -245,6 +297,8 @@ class ServerSender(ServerBase):
 
 class Server(ServerBase):
     """ A server that sends and receives messages to and from a single client.
+
+        This server runs in two threads, one to send messages and another to receive messages.
     """
 
     def __init__(
@@ -258,6 +312,17 @@ class Server(ServerBase):
             stop_send: Optional[Callable[[], bool]] = None,
             logger: Optional[logging.Logger] = None,
     ):
+        """ Initialize the Server class.
+
+           :param address: A tuple representing the IP address and port number to bind the server to.
+           :param received: Optional queue to store received messages.
+           :param to_send: Optional queue containing messages to be sent.
+           :param reconnect: If True, the server will attempt to reconnect after disconnection.
+           :param timeout: Optional timeout value for send and receive operations.
+           :param stop_receive: A function that returns True to signal the receiving loop to stop.
+           :param stop_send: A function that returns True to signal the sending loop to stop.
+           :param logger: Optional logger for logging server events.
+       """
         super().__init__(address=address, reconnect=reconnect, timeout=timeout, logger=logger)
         self._buffer = None  # type: Optional[Buffer]
 

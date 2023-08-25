@@ -1,3 +1,4 @@
+import abc
 import logging
 import queue
 import socket
@@ -10,10 +11,8 @@ from socketlib.basic.send import get_and_send_messages
 from socketlib.basic.receive import receive_and_enqueue
 
 
-class ClientBase:
-    """ Parent class for other client classes that implements some common methods.
-
-        This class should not be instantiated.
+class ClientBase(abc.ABC):
+    """ Abstract base class for other client classes that implements some common methods.
     """
 
     def __init__(
@@ -110,12 +109,14 @@ class ClientBase:
             return lambda: stop_event.is_set()
         return stop
 
+    @abc.abstractmethod
     def start(self) -> None:
         """ Start this client in a new thread. """
-        self._run_thread.start()
+        raise NotImplementedError
 
+    @abc.abstractmethod
     def join(self) -> None:
-        self._run_thread.join()
+        raise NotImplementedError
 
     def shutdown(self) -> None:
         """ Stop this client. If a custom stop function is used
@@ -137,7 +138,8 @@ class ClientBase:
 
 
 class ClientReceiver(ClientBase):
-    """ A client that receives messages from a server."""
+    """ A client that receives messages from a server.
+    """
 
     def __init__(
             self,
@@ -148,6 +150,16 @@ class ClientReceiver(ClientBase):
             stop: Optional[Callable[[], bool]] = None,
             logger: Optional[logging.Logger] = None,
     ):
+        """
+           Initialize the ClientReceiver class.
+
+           :param address: A tuple representing the IP address and port number to connect to.
+           :param received: Optional queue to store received messages.
+           :param reconnect: If True, the client will attempt to reconnect after disconnection.
+           :param timeout: Optional timeout value for send and receive operations.
+           :param stop: A function that returns True to signal the client to stop.
+           :param logger: Optional logger for logging client events.
+       """
         super().__init__(
             address=address,
             reconnect=reconnect,
@@ -162,14 +174,23 @@ class ClientReceiver(ClientBase):
     def received(self) -> queue.Queue[bytes]:
         return self._received
 
+    @property
+    def receive_thread(self) -> threading.Thread:
+        return self._run_thread
+
     def start_main_thread(self) -> None:
         """ Start this client in the main thread"""
         self._recv()
 
-    def connect(self, timeout: Optional[float] = None) -> None:
-        self._connect_timeout = timeout
-        connect_thread = threading.Thread(target=self._connect_to_server, args=(timeout,), daemon=True)
-        connect_thread.start()
+    def start(self) -> None:
+        """ Start client in a new thread.
+        """
+        self.receive_thread.start()
+
+    def join(self) -> None:
+        """ Wait for the client thread to finish.
+        """
+        self.receive_thread.join()
 
     def _connect_to_server(self, timeout: Optional[float] = None) -> None:
         super()._connect_to_server(timeout)
@@ -214,6 +235,16 @@ class ClientSender(ClientBase):
             stop: Optional[Callable[[], bool]] = None,
             logger: Optional[logging.Logger] = None,
     ):
+        """
+           Initialize the ClientReceiver class.
+
+           :param address: A tuple representing the IP address and port number to connect to.
+           :param to_send: Optional queue to store messages to be sent.
+           :param reconnect: If True, the client will attempt to reconnect after disconnection.
+           :param timeout: Optional timeout value for send and receive operations.
+           :param stop: A function that returns True to signal the client to stop.
+           :param logger: Optional logger for logging client events.
+       """
         super().__init__(
             address=address,
             reconnect=reconnect,
@@ -226,6 +257,20 @@ class ClientSender(ClientBase):
     @property
     def to_send(self) -> queue.Queue[str]:
         return self._to_send
+
+    @property
+    def send_thread(self) -> threading.Thread:
+        return self._run_thread
+
+    def start(self) -> None:
+        """ Start the client in another thread.
+        """
+        self.send_thread.start()
+
+    def join(self) -> None:
+        """ Wait for the client thread to finish.
+        """
+        self.send_thread.join()
 
     def _send(self) -> None:
         self._wait_for_connection.wait()
@@ -274,6 +319,18 @@ class Client(ClientBase):
             stop_send: Callable[[], bool] = None,
             logger: Optional[logging.Logger] = None,
     ):
+        """
+           Initialize the Client class.
+
+           :param address: A tuple representing the IP address and port number to connect to.
+           :param received: Optional queue to store received messages.
+           :param to_send: Optional queue containing messages to be sent.
+           :param reconnect: If True, the client will attempt to reconnect after disconnection.
+           :param timeout: Optional timeout value for send and receive operations.
+           :param stop_receive: A function that returns True to signal the receiving loop to stop.
+           :param stop_send: A function that returns True to signal the sending loop to stop.
+           :param logger: Optional logger for logging client events.
+       """
         super().__init__(address=address, reconnect=reconnect, timeout=timeout, logger=logger)
         self.msg_end = b"\r\n"
         self._buffer = None  # type: Optional[Buffer]
