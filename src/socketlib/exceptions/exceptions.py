@@ -1,0 +1,3 @@
+
+class FailedToReconnect(OSError):
+    pass

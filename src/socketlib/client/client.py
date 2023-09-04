@@ -128,6 +128,7 @@ class ClientBase(abc.ABC):
 
     def close_connection(self) -> None:
         if self._socket is not None:
+            self._socket.shutdown(socket.SHUT_RDWR)
             self._socket.close()
 
     def __enter__(self):
@@ -222,6 +223,9 @@ class ClientReceiver(ClientBase):
                 name=self.__class__.__name__
             )
 
+        if self._logger:
+            self._logger.debug(f"{self.__class__.__name__} exits _recv")
+
 
 class ClientSender(ClientBase):
     """ A client that sends messages to a server"""
@@ -298,6 +302,9 @@ class ClientSender(ClientBase):
                 name=self.__class__.__name__,
                 encoding=self.encoding
             )
+
+        if self._logger:
+            self._logger.debug(f"{self.__class__.__name__} exits _send")
 
     def start_main_thread(self) -> None:
         """ Start this client in the main thread"""
@@ -397,6 +404,9 @@ class Client(ClientBase):
                 name=self.__class__.__name__
             )
 
+        if self._logger:
+            self._logger.debug(f"{self.__class__.__name__} exits _send")
+
     def _recv(self) -> None:
         self._wait_for_connection.wait()
         if self._reconnect:
@@ -421,6 +431,9 @@ class Client(ClientBase):
                 logger=self._logger,
                 name=self.__class__.__name__
             )
+
+        if self._logger:
+            self._logger.debug(f"{self.__class__.__name__} exits _recv")
 
     def start(self) -> None:
         """ Start this client in a new thread. """
