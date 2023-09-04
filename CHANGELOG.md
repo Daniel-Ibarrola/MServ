@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.5.1 (4/09/2023)
+
+### Bugfixes
+- Fixed address already in use error when server tries to reconnect a client.
+- Sockets are shutdown before closing
+
+### Features
+- All clients and servers have optional argument `stop_reconnect` to add
+a custom function to stop the reconnection loop.
+
+### Tests
+- Integration tests for reconnection.
+
 ## v0.5.0
 
 ### Features

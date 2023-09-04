@@ -139,7 +139,10 @@ class ClientBase(abc.ABC):
 
     def close_connection(self) -> None:
         if self._socket is not None:
-            self._socket.shutdown(socket.SHUT_RDWR)
+            try:
+                self._socket.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
             self._socket.close()
 
     def __enter__(self):
