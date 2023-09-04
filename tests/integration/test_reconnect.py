@@ -13,7 +13,7 @@ from socketlib import (
 
 
 def put_msgs_in_queue(messages: queue.Queue[str]) -> None:
-    for ii in range(50):
+    for ii in range(500):
         messages.put(f"msg {ii}")
 
 
