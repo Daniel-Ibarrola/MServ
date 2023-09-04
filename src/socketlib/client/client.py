@@ -59,12 +59,21 @@ class ClientBase(abc.ABC):
     def run_thread(self) -> threading.Thread:
         return self._run_thread
 
+    @property
+    def connect_timeout(self) -> Optional[float]:
+        return self._connect_timeout
+
+    @connect_timeout.setter
+    def connect_timeout(self, timeout: float):
+        self._connect_timeout = timeout
+
     def connect(self, timeout: Optional[float] = None) -> None:
         """ Connect to the server. This will attempt to connect to the server indefinitely
             unless a timeout is given.
 
         """
-        self._connect_timeout = timeout
+        if self.connect_timeout is None:
+            self.connect_timeout = timeout
         connect_thread = threading.Thread(
             target=self._connect_to_server, args=(timeout,), daemon=True
         )

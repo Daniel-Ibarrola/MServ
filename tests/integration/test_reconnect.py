@@ -12,6 +12,11 @@ from socketlib import (
 )
 
 
+def put_msgs_in_queue(messages: queue.Queue[str]) -> None:
+    for ii in range(50):
+        messages.put(f"msg {ii}")
+
+
 class TestServerReconnects:
 
     address1 = "localhost", random.randint(1024, 49150)
@@ -108,6 +113,8 @@ class TestServerReconnects:
         client1, client2 = client_receivers
 
         to_send = queue.Queue()
+        put_msgs_in_queue(to_send)  # Put many messages so there is a connection error
+
         stop_server = threading.Event()
         server = ServerSender(
             address=self.address2,
@@ -118,23 +125,21 @@ class TestServerReconnects:
             stop_reconnect=lambda: stop_server.is_set(),
             logger=self.logger
         )
-        to_send.put("msg 1")
         server.start()
-
         self.wait_for_client(client1)
+        assert not client1.received.empty()
 
-        to_send.put("msg 2")
         time.sleep(0.5)
-
         self.wait_for_client(client2)
 
         stop_server.set()
         server.join()
-        assert not client1.received.empty()
-        assert not client2.received.empty()
 
-        assert client1.received.get() == b"msg 1"
-        assert client2.received.get() == b"msg 2"
+        assert not client2.received.empty()
+        msg = client1.received.get().decode()
+        assert "msg" in msg
+        msg = client2.received.get().decode()
+        assert "msg" in msg
 
 
 class TestClientReconnects:
@@ -230,34 +235,43 @@ class TestClientReconnects:
     @pytest.mark.timeout(3)
     def test_client_sender_can_reconnect(self, server_receivers):
         to_send = queue.Queue()
-        to_send.put("msg 1")
-        to_send.put("msg 2")
+        put_msgs_in_queue(to_send)
+
+        stop = threading.Event()
         client = ClientSender(
             address=self.address1,
             to_send=to_send,
             reconnect=True,
             timeout=0.2,
-            stop=lambda: to_send.empty(),
-            stop_reconnect=lambda: to_send.empty(),
+            stop=lambda: stop.is_set(),
+            stop_reconnect=lambda: stop.is_set(),
             logger=self.logger
         )
+        client.connect_timeout = 0.3
 
         server1, server2 = server_receivers
         server1.start()
         client.connect()
+        client.start()
 
         server1.join()
         server1.close_connection()
+        self.logger.info("Server 1 shutdown")
+        assert not server1.received.empty()
+        assert not client.to_send.empty()
+
         time.sleep(0.2)  # Wait for client to call connect to server method
 
         server2.start()
         server2.join()
         server2.close_connection()
 
+        stop.set()
         client.join()
-        assert client.to_send.empty()
 
-        assert not server1.received.empty()
         assert not server2.received.empty()
-        assert server1.received.get() == b"msg 1"
-        assert server2.received.get() == b"msg 2"
+
+        msg = server1.received.get().decode()
+        assert "msg" in msg
+        msg = server2.received.get().decode()
+        assert "msg" in msg
