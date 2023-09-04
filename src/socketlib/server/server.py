@@ -33,8 +33,8 @@ class ServerBase(abc.ABC):
            :param logger: Optional logger for logging server events.
        """
         self._address = address
-        self._socket = None  # type: Optional[socket.socket]
-        self._connection = None  # The client connection
+        self._socket: Optional[socket.socket] = None
+        self._connection: Optional[socket.socket] = None  # The client connection
         self._conn_details = None
 
         self._stop_event = threading.Event()
@@ -65,6 +65,7 @@ class ServerBase(abc.ABC):
         """ Creates the socket and puts it in listen mode.
         """
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self._socket.bind(self._address)
         self._socket.listen()
         if self._logger is not None:
@@ -108,9 +109,16 @@ class ServerBase(abc.ABC):
 
     def close_connection(self) -> None:
         if self._connection is not None:
+            try:
+                self._connection.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
             self._connection.close()
         if self._socket is not None:
-            self._socket.close()
+            try:
+                self._socket.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                self._socket.close()
 
     @staticmethod
     def _get_stop_function(
@@ -135,6 +143,7 @@ class ServerReceiver(ServerBase):
             reconnect: bool = True,
             timeout: Optional[float] = None,
             stop: Optional[Callable[[], bool]] = None,
+            stop_reconnect: Optional[Callable[[], bool]] = None,
             logger: Optional[logging.Logger] = None,
     ):
         """ Initialize the server receiver class.
@@ -143,6 +152,8 @@ class ServerReceiver(ServerBase):
                :param reconnect: If True, the server will attempt to reconnect after disconnection.
                :param timeout: Optional timeout value for send and receive operations.
                :param stop: A function that returns True to signal the server to stop.
+               :param stop_reconnect: A function that returns True to signal the reconnecting loop to stop. Won't have
+                any effect if reconnect is set to False.
                :param logger: Optional logger for logging server events.
        """
         super().__init__(
@@ -150,6 +161,7 @@ class ServerReceiver(ServerBase):
             reconnect=reconnect,
             timeout=timeout,
             stop=stop,
+            stop_reconnect=stop_reconnect,
             logger=logger)
         self._buffer = None  # type: Optional[Buffer]
         self._received = received if received is not None else queue.Queue()
@@ -192,7 +204,6 @@ class ServerReceiver(ServerBase):
                     name=self.__class__.__name__
                 )
                 self.close_connection()
-                # TODO: in some cases listen can raise and address already in use error
                 self.listen()
         else:
             self.accept_connection()
@@ -222,6 +233,7 @@ class ServerSender(ServerBase):
             reconnect: bool = True,
             timeout: Optional[float] = None,
             stop: Optional[Callable[[], bool]] = None,
+            stop_reconnect: Optional[Callable[[], bool]] = None,
             logger: Optional[logging.Logger] = None,
     ):
         """ Initialize the server receiver class.
@@ -230,6 +242,8 @@ class ServerSender(ServerBase):
            :param reconnect: If True, the server will attempt to reconnect after disconnection.
            :param timeout: Optional timeout value for send and receive operations.
            :param stop: A function that returns True to signal the server to stop.
+           :param stop_reconnect: A function that returns True to signal the reconnecting loop to stop. Won't have
+                any effect if reconnect is set to False.
            :param logger: Optional logger for logging server events.
        """
         super().__init__(
@@ -237,6 +251,7 @@ class ServerSender(ServerBase):
             reconnect=reconnect,
             timeout=timeout,
             stop=stop,
+            stop_reconnect=stop_reconnect,
             logger=logger)
         self.msg_end = b"\r\n"
         self._to_send = to_send if to_send is not None else queue.Queue()
@@ -310,6 +325,7 @@ class Server(ServerBase):
             timeout: Optional[float] = None,
             stop_receive: Optional[Callable[[], bool]] = None,
             stop_send: Optional[Callable[[], bool]] = None,
+            stop_reconnect: Optional[Callable[[], bool]] = None,
             logger: Optional[logging.Logger] = None,
     ):
         """ Initialize the Server class.
@@ -321,9 +337,17 @@ class Server(ServerBase):
            :param timeout: Optional timeout value for send and receive operations.
            :param stop_receive: A function that returns True to signal the receiving loop to stop.
            :param stop_send: A function that returns True to signal the sending loop to stop.
+           :param stop_reconnect: A function that returns True to signal the reconnecting loop to stop. Won't have
+                any effect if reconnect is set to False.
            :param logger: Optional logger for logging server events.
        """
-        super().__init__(address=address, reconnect=reconnect, timeout=timeout, logger=logger)
+        super().__init__(
+            address=address,
+            reconnect=reconnect,
+            timeout=timeout,
+            logger=logger,
+            stop_reconnect=stop_reconnect
+        )
         self._buffer = None  # type: Optional[Buffer]
 
         self._received = received if received is not None else queue.Queue()

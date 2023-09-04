@@ -37,6 +37,7 @@ def __init__(
     reconnect: bool = True,
     timeout: Optional[float] = None,
     stop: Optional[Callable[[], bool]] = None,
+    stop_reconnect: Optional[Callable[[], bool]] = None,
     logger: Optional[logging.Logger] = None,
 )
 ```
@@ -46,6 +47,8 @@ def __init__(
 - `reconnect`: If True, the server will attempt to reconnect after disconnection.
 - `timeout`: Optional timeout value for send and receive operations.
 - `stop`: A function that returns True to signal the server to stop.
+- `stop_reconnect`: A function that returns True to signal the reconnecting loop to stop. Won't have
+any effect if reconnect is set to False.
 - `logger`: Optional logger for logging server events.
 
 #### Properties
@@ -75,6 +78,7 @@ def __init__(
     reconnect: bool = True,
     timeout: Optional[float] = None,
     stop: Optional[Callable[[], bool]] = None,
+    stop_reconnect: Optional[Callable[[], bool]] = None,
     logger: Optional[logging.Logger] = None,
 )
 ```
@@ -84,6 +88,8 @@ def __init__(
 - `reconnect`: If True, the server will attempt to reconnect after disconnection.
 - `timeout`: Optional timeout value for send and receive operations.
 - `stop`: A function that returns True to signal the server to stop.
+- `stop_reconnect`: A function that returns True to signal the reconnecting loop to stop. Won't have
+any effect if reconnect is set to False.
 - `logger`: Optional logger for logging server events.
 
 #### Properties
@@ -116,6 +122,7 @@ def __init__(
     timeout: Optional[float] = None,
     stop_receive: Optional[Callable[[], bool]] = None,
     stop_send: Optional[Callable[[], bool]] = None,
+    stop_reconnect: Optional[Callable[[], bool]] = None,
     logger: Optional[logging.Logger] = None,
 )
 
@@ -128,6 +135,8 @@ def __init__(
 - `timeout`: Optional timeout value for send and receive operations.
 - `stop_receive`:  A function that returns True to signal the receiving loop to stop.
 - `stop_send`:  A function that returns True to signal the sending loop to stop.
+- `stop_reconnect`: A function that returns True to signal the reconnecting loop to stop. Won't have
+any effect if reconnect is set to False.
 - `logger`: Optional logger for logging server events.
 
 #### Properties
@@ -160,6 +169,7 @@ def __init__(
     reconnect: bool = True,
     timeout: Optional[float] = None,
     stop: Optional[Callable[[], bool]] = None,
+    stop_reconnect: Optional[Callable[[], bool]] = None,
     logger: Optional[logging.Logger] = None,
 )
 ```
@@ -169,6 +179,8 @@ def __init__(
 - `reconnect`: If True, the client will attempt to reconnect after disconnection.
 - `timeout`: Optional timeout value for send and receive operations.
 - `stop`: A function that returns True to signal the client to stop.
+- `stop_reconnect`: A function that returns True to signal the reconnecting loop to stop. Won't have
+any effect if reconnect is set to False.
 - `logger`: Optional logger for logging client events.
 
 #### Properties
@@ -196,6 +208,7 @@ def __init__(
     reconnect: bool = True,
     timeout: Optional[float] = None,
     stop: Optional[Callable[[], bool]] = None,
+    stop_reconnect: Optional[Callable[[], bool]] = None,
     logger: Optional[logging.Logger] = None,
 )
 ```
@@ -205,6 +218,8 @@ def __init__(
 - `reconnect`: If True, the client will attempt to reconnect after disconnection.
 - `timeout`: Optional timeout value for send and receive operations.
 - `stop`: A function that returns True to signal the client to stop.
+- `stop_reconnect`: A function that returns True to signal the reconnecting loop to stop. Won't have
+any effect if reconnect is set to False.
 - `logger`: Optional logger for logging client events.
 
 #### Properties
@@ -236,6 +251,7 @@ def __init__(
     timeout: Optional[float] = None,
     stop_receive: Callable[[], bool] = None,
     stop_send: Callable[[], bool] = None,
+    stop_reconnect: Optional[Callable[[], bool]] = None,
     logger: Optional[logging.Logger] = None,
 )
 ```
@@ -246,6 +262,8 @@ def __init__(
 - `timeout`: Optional timeout value for send and receive operations.
 - `stop_receive`: A function that returns True to signal the receiving loop to stop.
 - `stop_send`: A function that returns True to signal the sending loop to stop.
+- `stop_reconnect`: A function that returns True to signal the reconnecting loop to stop. Won't have
+any effect if reconnect is set to False.
 - `logger`: Optional logger for logging client events.
 
 #### Properties
@@ -337,15 +355,17 @@ if __name__ == "__main__":
 
 ```python
 # server.py
-from socketlib import ServerSender
+from socketlib import ServerSender, get_module_logger
 from socketlib.services.samples import MessageGenerator
+
 
 if __name__ == "__main__":
 
     address = ("localhost", 12345)
     server = ServerSender(address)
     
-    msg_gen = MessageGenerator(server.to_send)
+    logger = get_module_logger(__name__, "dev", use_file_handler=False)
+    msg_gen = MessageGenerator(server.to_send, logger)
     
     with server:
         server.start()

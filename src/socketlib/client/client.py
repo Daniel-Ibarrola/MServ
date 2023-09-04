@@ -59,13 +59,24 @@ class ClientBase(abc.ABC):
     def run_thread(self) -> threading.Thread:
         return self._run_thread
 
+    @property
+    def connect_timeout(self) -> Optional[float]:
+        return self._connect_timeout
+
+    @connect_timeout.setter
+    def connect_timeout(self, timeout: float):
+        self._connect_timeout = timeout
+
     def connect(self, timeout: Optional[float] = None) -> None:
         """ Connect to the server. This will attempt to connect to the server indefinitely
             unless a timeout is given.
 
         """
-        self._connect_timeout = timeout
-        connect_thread = threading.Thread(target=self._connect_to_server, args=(timeout,), daemon=True)
+        if self.connect_timeout is None:
+            self.connect_timeout = timeout
+        connect_thread = threading.Thread(
+            target=self._connect_to_server, args=(timeout,), daemon=True
+        )
         connect_thread.start()
 
     def _connect_to_server(self, timeout: Optional[float] = None) -> None:
@@ -84,7 +95,7 @@ class ClientBase(abc.ABC):
                 break
             except (ConnectionError, socket.gaierror):
                 error = True
-                time.sleep(1)
+                time.sleep(0.5)
 
         if error and self._logger:
             self._connection_failed = True
@@ -128,6 +139,10 @@ class ClientBase(abc.ABC):
 
     def close_connection(self) -> None:
         if self._socket is not None:
+            try:
+                self._socket.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
             self._socket.close()
 
     def __enter__(self):
@@ -148,6 +163,7 @@ class ClientReceiver(ClientBase):
             reconnect: bool = True,
             timeout: Optional[float] = None,
             stop: Optional[Callable[[], bool]] = None,
+            stop_reconnect: Optional[Callable[[], bool]] = None,
             logger: Optional[logging.Logger] = None,
     ):
         """
@@ -158,6 +174,8 @@ class ClientReceiver(ClientBase):
            :param reconnect: If True, the client will attempt to reconnect after disconnection.
            :param timeout: Optional timeout value for send and receive operations.
            :param stop: A function that returns True to signal the client to stop.
+           :param stop_reconnect: A function that returns True to signal the reconnecting loop to stop. Won't have
+                any effect if reconnect is set to False.
            :param logger: Optional logger for logging client events.
        """
         super().__init__(
@@ -165,6 +183,7 @@ class ClientReceiver(ClientBase):
             reconnect=reconnect,
             timeout=timeout,
             stop=stop,
+            stop_reconnect=stop_reconnect,
             logger=logger)
         self._buffer = None  # type: Optional[Buffer]
         self._received = received if received is not None else queue.Queue()
@@ -210,7 +229,8 @@ class ClientReceiver(ClientBase):
                     logger=self._logger,
                     name=self.__class__.__name__
                 )
-                self._connect_to_server(self._connect_timeout)
+                if not self._stop():
+                    self._connect_to_server(self._connect_timeout)
         else:
             receive_and_enqueue(
                 buffer=self._buffer,
@@ -221,6 +241,9 @@ class ClientReceiver(ClientBase):
                 logger=self._logger,
                 name=self.__class__.__name__
             )
+
+        if self._logger:
+            self._logger.debug(f"{self.__class__.__name__} exits _recv")
 
 
 class ClientSender(ClientBase):
@@ -233,6 +256,7 @@ class ClientSender(ClientBase):
             reconnect: bool = True,
             timeout: Optional[float] = None,
             stop: Optional[Callable[[], bool]] = None,
+            stop_reconnect: Optional[Callable[[], bool]] = None,
             logger: Optional[logging.Logger] = None,
     ):
         """
@@ -243,6 +267,8 @@ class ClientSender(ClientBase):
            :param reconnect: If True, the client will attempt to reconnect after disconnection.
            :param timeout: Optional timeout value for send and receive operations.
            :param stop: A function that returns True to signal the client to stop.
+           :param stop_reconnect: A function that returns True to signal the reconnecting loop to stop. Won't have
+                any effect if reconnect is set to False.
            :param logger: Optional logger for logging client events.
        """
         super().__init__(
@@ -250,6 +276,7 @@ class ClientSender(ClientBase):
             reconnect=reconnect,
             timeout=timeout,
             stop=stop,
+            stop_reconnect=stop_reconnect,
             logger=logger)
         self._to_send = to_send if to_send is not None else queue.Queue()
         self._run_thread = threading.Thread(target=self._send, daemon=True)
@@ -286,7 +313,8 @@ class ClientSender(ClientBase):
                     name=self.__class__.__name__,
                     encoding=self.encoding
                 )
-                self._connect_to_server(self._connect_timeout)
+                if not self._stop():
+                    self._connect_to_server(self._connect_timeout)
         else:
             get_and_send_messages(
                 sock=self._socket,
@@ -298,6 +326,9 @@ class ClientSender(ClientBase):
                 name=self.__class__.__name__,
                 encoding=self.encoding
             )
+
+        if self._logger:
+            self._logger.debug(f"{self.__class__.__name__} exits _send")
 
     def start_main_thread(self) -> None:
         """ Start this client in the main thread"""
@@ -317,6 +348,7 @@ class Client(ClientBase):
             timeout: Optional[float] = None,
             stop_receive: Callable[[], bool] = None,
             stop_send: Callable[[], bool] = None,
+            stop_reconnect: Optional[Callable[[], bool]] = None,
             logger: Optional[logging.Logger] = None,
     ):
         """
@@ -329,9 +361,17 @@ class Client(ClientBase):
            :param timeout: Optional timeout value for send and receive operations.
            :param stop_receive: A function that returns True to signal the receiving loop to stop.
            :param stop_send: A function that returns True to signal the sending loop to stop.
+           :param stop_reconnect: A function that returns True to signal the reconnecting loop to stop. Won't have
+                any effect if reconnect is set to False.
            :param logger: Optional logger for logging client events.
        """
-        super().__init__(address=address, reconnect=reconnect, timeout=timeout, logger=logger)
+        super().__init__(
+            address=address,
+            reconnect=reconnect,
+            timeout=timeout,
+            logger=logger,
+            stop_reconnect=stop_reconnect
+        )
         self.msg_end = b"\r\n"
         self._buffer = None  # type: Optional[Buffer]
 
@@ -397,6 +437,9 @@ class Client(ClientBase):
                 name=self.__class__.__name__
             )
 
+        if self._logger:
+            self._logger.debug(f"{self.__class__.__name__} exits _send")
+
     def _recv(self) -> None:
         self._wait_for_connection.wait()
         if self._reconnect:
@@ -421,6 +464,9 @@ class Client(ClientBase):
                 logger=self._logger,
                 name=self.__class__.__name__
             )
+
+        if self._logger:
+            self._logger.debug(f"{self.__class__.__name__} exits _recv")
 
     def start(self) -> None:
         """ Start this client in a new thread. """
