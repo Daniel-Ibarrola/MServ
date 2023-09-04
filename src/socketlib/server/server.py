@@ -3,13 +3,11 @@ import queue
 import logging
 import socket
 import threading
-import time
 from typing import Callable, Optional
 
 from socketlib.basic.buffer import Buffer
 from socketlib.basic.receive import receive_and_enqueue
 from socketlib.basic.send import get_and_send_messages
-from socketlib.exceptions.exceptions import FailedToReconnect
 
 
 class ServerBase(abc.ABC):
@@ -111,11 +109,16 @@ class ServerBase(abc.ABC):
 
     def close_connection(self) -> None:
         if self._connection is not None:
-            self._connection.shutdown(socket.SHUT_RDWR)
+            try:
+                self._connection.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
             self._connection.close()
         if self._socket is not None:
-            self._socket.shutdown(socket.SHUT_RDWR)
-            self._socket.close()
+            try:
+                self._socket.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                self._socket.close()
 
     @staticmethod
     def _get_stop_function(
@@ -201,7 +204,6 @@ class ServerReceiver(ServerBase):
                     name=self.__class__.__name__
                 )
                 self.close_connection()
-                # TODO: in some cases listen can raise and address already in use error
                 self.listen()
         else:
             self.accept_connection()
