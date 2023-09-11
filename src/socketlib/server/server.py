@@ -3,7 +3,7 @@ import queue
 import logging
 import socket
 import threading
-from typing import Callable, Optional
+from typing import Callable, Optional, Type
 
 from socketlib.basic.buffer import Buffer
 from socketlib.basic.receive import receive_and_enqueue
@@ -229,7 +229,7 @@ class ServerSender(ServerBase):
     def __init__(
             self,
             address: tuple[str, int],
-            to_send: Optional[queue.Queue[str]] = None,
+            to_send: Optional[queue.Queue[str | bytes]] = None,
             reconnect: bool = True,
             timeout: Optional[float] = None,
             stop: Optional[Callable[[], bool]] = None,
@@ -260,7 +260,7 @@ class ServerSender(ServerBase):
         )
 
     @property
-    def to_send(self) -> queue.Queue[str]:
+    def to_send(self) -> queue.Queue[str | bytes]:
         return self._to_send
 
     @property
@@ -320,7 +320,7 @@ class Server(ServerBase):
             self,
             address: tuple[str, int],
             received: Optional[queue.Queue[bytes]] = None,
-            to_send: Optional[queue.Queue[str]] = None,
+            to_send: Optional[queue.Queue[str | bytes]] = None,
             reconnect: bool = True,
             timeout: Optional[float] = None,
             stop_receive: Optional[Callable[[], bool]] = None,

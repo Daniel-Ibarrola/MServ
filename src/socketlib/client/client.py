@@ -252,7 +252,7 @@ class ClientSender(ClientBase):
     def __init__(
             self,
             address: tuple[str, int],
-            to_send: Optional[queue.Queue[str]] = None,
+            to_send: Optional[queue.Queue[str | bytes]] = None,
             reconnect: bool = True,
             timeout: Optional[float] = None,
             stop: Optional[Callable[[], bool]] = None,
@@ -282,7 +282,7 @@ class ClientSender(ClientBase):
         self._run_thread = threading.Thread(target=self._send, daemon=True)
 
     @property
-    def to_send(self) -> queue.Queue[str]:
+    def to_send(self) -> queue.Queue[str | bytes]:
         return self._to_send
 
     @property
@@ -343,7 +343,7 @@ class Client(ClientBase):
             self,
             address: tuple[str, int],
             received: Optional[queue.Queue[bytes]] = None,
-            to_send: Optional[queue.Queue[str]] = None,
+            to_send: Optional[queue.Queue[str | bytes]] = None,
             reconnect: bool = True,
             timeout: Optional[float] = None,
             stop_receive: Callable[[], bool] = None,
@@ -387,7 +387,7 @@ class Client(ClientBase):
         self._recv_thread = threading.Thread(target=self._recv, daemon=True)
 
     @property
-    def to_send(self) -> queue.Queue[str]:
+    def to_send(self) -> queue.Queue[str | bytes]:
         return self._to_send
 
     @property
