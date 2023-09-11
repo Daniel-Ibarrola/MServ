@@ -7,4 +7,4 @@ from .server.server import Server, ServerReceiver, ServerSender
 from .utils.logger import get_module_logger
 from .utils.watch_dog import WatchDog
 
-__version__ = "0.5.1"
+__version__ = "0.6.0"
