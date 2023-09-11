@@ -258,6 +258,7 @@ class ServerSender(ServerBase):
         self._run_thread = threading.Thread(
             target=self._send, daemon=True
         )
+        self.send_wait = 0
 
     @property
     def to_send(self) -> queue.Queue[str | bytes]:
@@ -292,7 +293,8 @@ class ServerSender(ServerBase):
                     timeout=self._timeout,
                     logger=self._logger,
                     name=self.__class__.__name__,
-                    encoding=self.encoding
+                    encoding=self.encoding,
+                    wait=self.send_wait
                 )
                 self.close_connection()
                 self.listen()
@@ -306,7 +308,8 @@ class ServerSender(ServerBase):
                 timeout=self._timeout,
                 logger=self._logger,
                 name=self.__class__.__name__,
-                encoding=self.encoding
+                encoding=self.encoding,
+                wait=self.send_wait
             )
 
 
@@ -362,6 +365,8 @@ class Server(ServerBase):
         self._recv_thread = threading.Thread(target=self._recv, daemon=True)
         self._connected = threading.Event()
 
+        self.send_wait = 0
+
     @property
     def to_send(self) -> queue.Queue[str]:
         return self._to_send
@@ -390,7 +395,8 @@ class Server(ServerBase):
                     timeout=self._timeout,
                     logger=self._logger,
                     name=self.__class__.__name__,
-                    encoding=self.encoding
+                    encoding=self.encoding,
+                    wait=self.send_wait
                 )
                 self._connected.clear()
                 self.close_connection()
@@ -405,7 +411,8 @@ class Server(ServerBase):
                 timeout=self._timeout,
                 logger=self._logger,
                 name=self.__class__.__name__,
-                encoding=self.encoding
+                encoding=self.encoding,
+                wait=self.send_wait
             )
 
     def _recv(self):

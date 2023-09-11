@@ -2,6 +2,7 @@ import logging
 import queue
 import socket
 from typing import Callable, Optional
+import time
 
 from socketlib.basic.queues import get_from_queue
 
@@ -52,14 +53,17 @@ def get_and_send_messages(
         timeout: float,
         logger: Optional[logging.Logger] = None,
         name: str = "",
-        encoding: str = "utf-8"
+        encoding: str = "utf-8",
+        wait: float = 0,
 ) -> None:
     """ Get messages from a queue and send them until the
         stop function evaluates to true.
     """
     while not stop():
+        # TODO: add a small (optional) wait period before sending messages
         msg = get_from_queue(msg_queue, timeout=timeout)
         if msg is not None:
             error = send_msg(sock, msg, msg_end, logger, name, encoding)
+            time.sleep(wait)
             if error:
                 break
