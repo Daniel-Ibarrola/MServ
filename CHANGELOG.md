@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.6.0 (10/09/2023)
+
+### Features
+- `Client`, `ClientSender`, `ServerSender` and `Server` classes can use bytes or string queues for messages
+that will be sent.
+- The functions `get_and_send_messages`and `send_msg can accept string or bytes.
+- Removed function `receive_msg`.
+- Connection errors and socket timeout are logged with different messages.
+- `Client`, `ClientSender`, `ServerSender` and `Server` have `send_wait` attribute to optionally wait some time
+before sending new messages.
+
+### Tests
+- Unit test for send and receive modules.
+
 ## v0.5.1 (4/09/2023)
 
 ### Bugfixes

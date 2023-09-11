@@ -13,7 +13,7 @@ from socketlib import (
 
 
 def put_msgs_in_queue(messages: queue.Queue[str]) -> None:
-    for ii in range(500):
+    for ii in range(1500):
         messages.put(f"msg {ii}")
 
 
@@ -125,6 +125,7 @@ class TestServerReconnects:
             stop_reconnect=lambda: stop_server.is_set(),
             logger=self.logger
         )
+        server.send_wait = 0.1
         server.start()
         self.wait_for_client(client1)
         assert not client1.received.empty()

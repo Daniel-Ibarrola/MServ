@@ -252,7 +252,7 @@ class ClientSender(ClientBase):
     def __init__(
             self,
             address: tuple[str, int],
-            to_send: Optional[queue.Queue[str]] = None,
+            to_send: Optional[queue.Queue[str | bytes]] = None,
             reconnect: bool = True,
             timeout: Optional[float] = None,
             stop: Optional[Callable[[], bool]] = None,
@@ -280,9 +280,10 @@ class ClientSender(ClientBase):
             logger=logger)
         self._to_send = to_send if to_send is not None else queue.Queue()
         self._run_thread = threading.Thread(target=self._send, daemon=True)
+        self.send_wait = 0
 
     @property
-    def to_send(self) -> queue.Queue[str]:
+    def to_send(self) -> queue.Queue[str | bytes]:
         return self._to_send
 
     @property
@@ -311,7 +312,8 @@ class ClientSender(ClientBase):
                     timeout=self._timeout,
                     logger=self._logger,
                     name=self.__class__.__name__,
-                    encoding=self.encoding
+                    encoding=self.encoding,
+                    wait=self.send_wait
                 )
                 if not self._stop():
                     self._connect_to_server(self._connect_timeout)
@@ -324,7 +326,8 @@ class ClientSender(ClientBase):
                 timeout=self._timeout,
                 logger=self._logger,
                 name=self.__class__.__name__,
-                encoding=self.encoding
+                encoding=self.encoding,
+                wait=self.send_wait
             )
 
         if self._logger:
@@ -343,7 +346,7 @@ class Client(ClientBase):
             self,
             address: tuple[str, int],
             received: Optional[queue.Queue[bytes]] = None,
-            to_send: Optional[queue.Queue[str]] = None,
+            to_send: Optional[queue.Queue[str | bytes]] = None,
             reconnect: bool = True,
             timeout: Optional[float] = None,
             stop_receive: Callable[[], bool] = None,
@@ -386,8 +389,10 @@ class Client(ClientBase):
         self._send_thread = threading.Thread(target=self._send, daemon=True)
         self._recv_thread = threading.Thread(target=self._recv, daemon=True)
 
+        self.send_wait = 0
+
     @property
-    def to_send(self) -> queue.Queue[str]:
+    def to_send(self) -> queue.Queue[str | bytes]:
         return self._to_send
 
     @property
@@ -422,7 +427,8 @@ class Client(ClientBase):
                     stop=self._stop_send,
                     timeout=self._timeout,
                     logger=self._logger,
-                    name=self.__class__.__name__
+                    name=self.__class__.__name__,
+                    wait=self.send_wait
                 )
                 self._wait_for_connection.clear()
                 self._connect_to_server(self._connect_timeout)
@@ -434,7 +440,8 @@ class Client(ClientBase):
                 stop=self._stop_send,
                 timeout=self._timeout,
                 logger=self._logger,
-                name=self.__class__.__name__
+                name=self.__class__.__name__,
+                wait=self.send_wait
             )
 
         if self._logger:
