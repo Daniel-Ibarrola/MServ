@@ -37,6 +37,7 @@ class ClientBase(abc.ABC):
         self._logger = logger
 
         self._run_thread = threading.Thread()
+        self._connect_thread = None  # type: Optional[threading.Thread]
 
         self._wait_for_connection = threading.Event()
         self._connection_failed = False
@@ -67,6 +68,10 @@ class ClientBase(abc.ABC):
     def connect_timeout(self, timeout: float):
         self._connect_timeout = timeout
 
+    @property
+    def connect_thread(self) -> Optional[threading.Thread]:
+        return self._connect_thread
+
     def connect(self, timeout: Optional[float] = None) -> None:
         """ Connect to the server. This will attempt to connect to the server indefinitely
             unless a timeout is given.
@@ -74,10 +79,10 @@ class ClientBase(abc.ABC):
         """
         if self.connect_timeout is None:
             self.connect_timeout = timeout
-        connect_thread = threading.Thread(
+        self._connect_thread = threading.Thread(
             target=self._connect_to_server, args=(timeout,), daemon=True
         )
-        connect_thread.start()
+        self._connect_thread.start()
 
     def _connect_to_server(self, timeout: Optional[float] = None) -> None:
         start = time.time()
@@ -93,7 +98,7 @@ class ClientBase(abc.ABC):
                     self._socket.settimeout(self._timeout)
                 error = False
                 break
-            except (ConnectionError, socket.gaierror):
+            except (ConnectionError, socket.gaierror, TimeoutError):
                 error = True
                 time.sleep(0.5)
 
