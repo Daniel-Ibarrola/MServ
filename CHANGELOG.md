@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.6.1 (12/11/2023)
+- Client connect method can catch TimeoutError exception.
+- Client has a new connect_thread property.
+
 ## v0.6.0 (10/09/2023)
 
 ### Features
